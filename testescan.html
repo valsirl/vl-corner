@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VL Corner — Analisador de Mapa de Calor v3</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@300;400;500&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Roboto',sans-serif;background:#0a0a0f;color:#e0e0e0;min-height:100vh;}
+  .container{max-width:1100px;margin:0 auto;padding:24px 20px;}
+  header{background:linear-gradient(135deg,#0f0f1a 0%,#1a1a2e 100%);border-bottom:3px solid #f5c518;padding:20px 30px;}
+  .header-inner{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .brand-name{font-family:'Oswald',sans-serif;font-size:1.6rem;font-weight:700;color:#f5c518;letter-spacing:3px;}
+  .brand-sub{font-size:0.75rem;color:#888;letter-spacing:2px;text-transform:uppercase;margin-top:3px;}
+  .header-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;}
+  .card{background:#111118;border-radius:10px;padding:20px;margin-bottom:18px;border:1px solid #222235;}
+  .card-title{font-family:'Oswald',sans-serif;font-size:0.92rem;color:#f5c518;letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+  input[type="password"],input[type="text"],input[type="number"],select{background:#0a0a12;border:1px solid #2a2a3a;color:#e0e0e0;padding:9px 13px;border-radius:7px;font-size:0.85rem;transition:border-color 0.2s;}
+  input:focus,select:focus{outline:none;border-color:#f5c518;}
+  .config-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
+  .btn{padding:9px 18px;border-radius:7px;border:none;cursor:pointer;font-family:'Oswald',sans-serif;font-size:0.85rem;letter-spacing:1px;font-weight:600;transition:all 0.2s;}
+  .btn-primary{background:linear-gradient(135deg,#f5c518,#e0a800);color:#0a0a0f;}
+  .btn-primary:hover{background:linear-gradient(135deg,#ffe135,#f5c518);transform:translateY(-1px);}
+  .btn-primary:disabled{background:#2a2a3a;color:#555;cursor:not-allowed;transform:none;}
+  .btn-danger{background:#3a1a1a;color:#ff7a7a;border:1px solid #5a2a2a;}
+  .btn-danger:hover{background:#4a2020;}
+  .btn-secondary{background:#1a1a2a;color:#888;border:1px solid #2a2a3a;}
+  .btn-secondary:hover{background:#222235;color:#bbb;}
+  .btn-warn{background:#1a1a3a;color:#aaccff;border:1px solid #3a3a6a;}
+  .btn-sm{padding:5px 11px;font-size:0.72rem;}
+  .btn-reset{background:linear-gradient(135deg,#4a1a1a,#3a0a0a);color:#ff5555;border:1px solid #6a2a2a;font-size:0.78rem;padding:8px 16px;}
+  .btn-reset:hover{background:linear-gradient(135deg,#5a2020,#4a1a1a);transform:translateY(-1px);box-shadow:0 2px 10px rgba(255,50,50,0.2);}
+  .btn-retry{background:linear-gradient(135deg,#1a2a3a,#0a1a2a);color:#7aaaff;border:1px solid #2a3a5a;}
+  .btn-retry:hover{background:#1a2a4a;transform:translateY(-1px);}
+  .api-status{padding:9px 13px;border-radius:7px;font-size:0.8rem;margin-top:8px;display:none;}
+  .api-status.ok{background:#0a1a0a;border:1px solid #2a6a2a;color:#6aaa6a;}
+  .api-status.error{background:#1a0a0a;border:1px solid #5a2a2a;color:#e74c3c;}
+  .api-status.loading{background:#1a1a0a;border:1px solid #5a5a2a;color:#f5c518;}
+  .saved-key-info{background:#0a0a12;border:1px solid #2a2a3a;border-radius:7px;padding:9px 13px;font-size:0.78rem;color:#666;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .saved-key-info span{flex:1;}
+  .db-banner{background:#111118;border:1px solid #222235;border-radius:10px;padding:13px 18px;margin-bottom:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-left:3px solid #f5c518;}
+  .db-dot{width:9px;height:9px;border-radius:50%;background:#2a7a2a;box-shadow:0 0 6px #2a7a2a;flex-shrink:0;animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{box-shadow:0 0 5px #2a7a2a;}50%{box-shadow:0 0 14px #4aaa4a;}}
+  .db-info{flex:1;}
+  .db-info strong{font-family:'Oswald',sans-serif;font-size:0.85rem;color:#f5c518;letter-spacing:1px;}
+  .db-info span{font-size:0.72rem;color:#555;display:block;margin-top:2px;}
+  .mode-selector{display:flex;gap:0;margin-bottom:18px;border-radius:10px;overflow:hidden;border:1px solid #2a2a3a;}
+  .mode-btn{flex:1;min-height:56px;padding:12px 16px;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;font-family:'Oswald',sans-serif;font-size:0.9rem;letter-spacing:1px;line-height:1.1;background:#111118;color:#666;transition:all 0.3s;border:none;gap:8px;}
+  .mode-btn:first-child{border-right:1px solid #2a2a3a;}
+  .mode-btn.active{background:linear-gradient(135deg,#1a1a2e,#222240);color:#f5c518;box-shadow:inset 0 -3px 0 #f5c518;}
+  .mode-btn:hover:not(.active){background:#1a1a25;color:#aaa;}
+  .upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+  @media (max-width: 720px){.upload-grid{grid-template-columns:1fr;}}
+  .upload-area{border:2px dashed #2a2a3a;border-radius:10px;padding:18px 16px;cursor:pointer;transition:all 0.3s;background:#0d0d14;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:4px;min-height:130px;}
+  .upload-area:hover,.upload-area.drag{border-color:#f5c518;background:#111118;}
+  .upload-area .up-icon{font-size:2rem;line-height:1;}
+  .upload-area p{color:#555;font-size:0.78rem;line-height:1.25;margin-top:2px;}
+  .upload-area strong{color:#aaa;font-weight:700;}
+  .upload-neg{border-color:#3a1a1a;background:#0f0a0a;}
+  .upload-neg:hover,.upload-neg.drag{border-color:#ff7a7a;}
+  .queue-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:14px;}
+  .thumb{position:relative;border-radius:7px;overflow:hidden;border:2px solid #222235;}
+  .thumb img{width:100%;height:85px;object-fit:cover;display:block;}
+  .thumb .status{position:absolute;bottom:0;left:0;right:0;font-size:0.65rem;text-align:center;padding:3px;font-family:'Oswald',sans-serif;}
+  .thumb .status.pending{background:rgba(10,10,15,0.9);color:#666;}
+  .thumb .status.processing{background:rgba(245,197,24,0.85);color:#0a0a0f;}
+  .thumb .status.done{background:rgba(42,122,42,0.9);color:#fff;}
+  .thumb .status.error{background:rgba(139,26,26,0.9);color:#ffaaaa;}
+  .error-detail{position:absolute;top:0;left:0;right:0;background:rgba(139,26,26,0.95);color:#ffaaaa;font-size:0.58rem;padding:3px;display:none;text-align:center;}
+  .thumb:hover .error-detail{display:block;}
+  .actions-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+  .progress-wrap{background:#0a0a12;border-radius:8px;height:7px;flex:1;min-width:100px;border:1px solid #222235;overflow:hidden;}
+  .progress-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,#2a7a2a,#f5c518);transition:width 0.4s;width:0%;}
+  #progressText,#progressTextNeg{font-size:0.78rem;color:#666;font-family:'Oswald',sans-serif;}
+  .log-box{background:#08080d;border:1px solid #1a1a25;border-radius:7px;padding:10px;font-size:0.7rem;font-family:monospace;max-height:140px;overflow-y:auto;margin-bottom:14px;display:none;}
+  .log-line.ok{color:#6aaa6a;}.log-line.err{color:#e74c3c;}.log-line.warn{color:#f5c518;}.log-line.info{color:#5aaaff;}
+  .scoreboard{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+  .score-item{background:#0d0d14;border:1px solid #222235;border-radius:7px;padding:9px 14px;text-align:center;flex:1;min-width:70px;}
+  .score-item .s-val{font-family:'Oswald',sans-serif;font-size:1.3rem;color:#f5c518;}
+  .score-item .s-label{font-size:0.65rem;color:#555;text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
+  .table-wrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:0.78rem;}
+  th{background:#0a0a12;color:#f5c518;padding:9px;text-align:left;border-bottom:2px solid #222235;white-space:nowrap;font-family:'Oswald',sans-serif;font-size:0.75rem;}
+  td{padding:7px 9px;border-bottom:1px solid #15151f;color:#ccc;}
+  tr:hover td{background:#15151f;}
+  .badge{padding:2px 8px;border-radius:10px;font-size:0.7rem;font-weight:600;}
+  .badge-gold{background:#1a1a0a;color:#f5c518;border:1px solid #3a3a1a;}
+  .badge-green{background:#0a1a0a;color:#6aaa6a;border:1px solid #1a3a1a;}
+  .badge-red{background:#1a0a0a;color:#ff7a7a;border:1px solid #3a1a1a;}
+  .rank-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;}
+  .rank-controls label{font-size:0.78rem;color:#888;font-family:'Oswald',sans-serif;letter-spacing:1px;}
+  .rank-table-scroll{max-height:400px;overflow-y:auto;border:1px solid #222235;border-radius:7px;}
+  .rank-table-scroll thead th{position:sticky;top:0;z-index:2;background:#0a0a12;}
+  .rank-controls select{min-width:120px;}
+  .rank-table th{font-size:0.72rem;}
+  .rank-table td{font-size:0.76rem;}
+  .rank-pos{font-family:'Oswald',sans-serif;font-weight:700;color:#f5c518;font-size:1rem;}
+  .rank-faixa{font-family:'Oswald',sans-serif;color:#aaa;font-size:0.82rem;}
+  .hit-bar{display:inline-flex;align-items:center;gap:6px;}
+  .hit-bar-bg{width:80px;height:8px;background:#1a1a25;border-radius:4px;overflow:hidden;display:inline-block;}
+  .hit-bar-fill{height:100%;border-radius:4px;transition:width 0.4s;}
+  .hit-green{background:linear-gradient(90deg,#2a7a2a,#6aaa6a);}
+  .hit-yellow{background:linear-gradient(90deg,#8a8a2a,#f5c518);}
+  .hit-red{background:linear-gradient(90deg,#6a2a2a,#e74c3c);}
+  .rank-lado{font-family:'Oswald',sans-serif;font-size:0.68rem;font-weight:700;border-radius:4px;padding:2px 6px;margin-right:3px;display:inline-block;}
+  .lado-esq{background:#0a1a2a;color:#5aaaff;border:1px solid #1a3a5a;}
+  .lado-cen{background:#1a1a0a;color:#f5c518;border:1px solid #3a3a1a;}
+  .lado-dir{background:#1a0a1a;color:#cc7aff;border:1px solid #3a1a4a;}
+  .calc-card{background:#0d0d14;border:1px solid #2a2a3a;border-radius:10px;padding:16px;margin-bottom:14px;}
+  .calc-inputs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
+  .calc-inputs label{font-family:'Oswald',sans-serif;font-size:0.75rem;color:#888;letter-spacing:1px;}
+  .calc-inputs input,.calc-inputs select{width:70px;}
+  .calc-result{background:#0a0a12;border:1px solid #222235;border-radius:8px;padding:14px;margin-top:10px;}
+  .calc-match{background:#111118;border:1px solid #222235;border-radius:7px;padding:10px;margin-top:8px;font-size:0.78rem;}
+  .calc-big{font-family:'Oswald',sans-serif;font-size:2rem;color:#f5c518;}
+  .calc-label{font-size:0.68rem;color:#555;text-transform:uppercase;letter-spacing:1px;}
+  .alert-hot{background:linear-gradient(135deg,#1a1a0a,#2a2a1a);border:1px solid #5a5a1a;border-left:4px solid #f5c518;border-radius:8px;padding:12px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .alert-hot .alert-icon{font-size:1.5rem;}
+  .alert-hot .alert-text{flex:1;font-size:0.78rem;color:#ccc;line-height:1.4;}
+  .alert-hot .alert-pct{font-family:'Oswald',sans-serif;font-size:1.4rem;color:#f5c518;}
+  .alert-cold{border-color:#1a3a5a;border-left-color:#5aaaff;background:linear-gradient(135deg,#0a0a1a,#0a1a2a);}
+  .alert-cold .alert-pct{color:#5aaaff;}
+  .field-wrap{display:flex;justify-content:center;margin-bottom:18px;}
+  .field-svg{max-width:360px;width:100%;}
+  .field-zone{transition:all 0.3s;cursor:pointer;}
+  .field-zone:hover{filter:brightness(1.3);}
+  .field-label{font-family:'Oswald',sans-serif;font-size:11px;fill:#fff;text-anchor:middle;pointer-events:none;}
+  .field-pct{font-family:'Oswald',sans-serif;font-size:14px;fill:#fff;text-anchor:middle;pointer-events:none;font-weight:700;}
+  .trend-item{background:#0d0d14;border:1px solid #222235;border-radius:8px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .trend-arrow{font-size:1.5rem;}
+  .trend-text{flex:1;font-size:0.78rem;color:#ccc;line-height:1.4;}
+  .trend-val{font-family:'Oswald',sans-serif;font-size:1.2rem;}
+  .trend-up{color:#6aaa6a;}
+  .trend-down{color:#ff7a7a;}
+  .trend-stable{color:#888;}
+  .conf-badge{font-family:'Oswald',sans-serif;font-size:0.68rem;border-radius:4px;padding:2px 7px;display:inline-block;}
+  .conf-high{background:#0a1a0a;color:#6aaa6a;border:1px solid #1a3a1a;}
+  .conf-med{background:#1a1a0a;color:#f5c518;border:1px solid #3a3a1a;}
+  .conf-low{background:#1a0a0a;color:#ff7a7a;border:1px solid #3a1a1a;}
+  .rank-detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9997;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.2s;}
+  .rank-detail-overlay.show{opacity:1;pointer-events:all;}
+  .rank-detail-box{background:#111118;border:1px solid #2a2a3a;border-radius:12px;padding:24px;max-width:700px;width:95%;max-height:80vh;overflow-y:auto;}
+  .rank-detail-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+  .rank-detail-title{font-family:'Oswald',sans-serif;font-size:1rem;color:#f5c518;letter-spacing:1px;flex:1;}
+  .rank-detail-close{background:none;border:1px solid #3a3a3a;color:#888;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:0.8rem;font-family:'Oswald',sans-serif;}
+  .rank-detail-close:hover{background:#1a1a2a;color:#fff;}
+  .rank-detail-summary{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+  .rank-detail-stat{background:#0a0a12;border:1px solid #222235;border-radius:7px;padding:8px 14px;text-align:center;}
+  .rank-detail-stat .rd-val{font-family:'Oswald',sans-serif;font-size:1.3rem;color:#f5c518;}
+  .rank-detail-stat .rd-label{font-size:0.62rem;color:#555;text-transform:uppercase;letter-spacing:1px;}
+  .rank-detail-table{width:100%;border-collapse:collapse;font-size:0.75rem;}
+  .rank-detail-table th{background:#0a0a12;color:#f5c518;padding:7px;text-align:left;font-family:'Oswald',sans-serif;font-size:0.7rem;border-bottom:2px solid #222235;}
+  .rank-detail-table td{padding:6px 7px;border-bottom:1px solid #15151f;color:#ccc;}
+  .rank-detail-table tr:hover td{background:#15151f;}
+  .rank-row-clickable{cursor:pointer;transition:background 0.2s;}
+  .rank-row-clickable:hover td{background:#1a1a2a !important;}
+  .scanner-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;}
+  .scanner-controls label{font-family:'Oswald',sans-serif;font-size:0.75rem;color:#888;letter-spacing:1px;}
+  .scanner-controls input,.scanner-controls select{width:70px;}
+  .scanner-running{background:#1a1a0a;border:1px solid #3a3a1a;border-radius:7px;padding:10px 14px;margin-bottom:14px;font-size:0.78rem;color:#f5c518;font-family:'Oswald',sans-serif;display:none;text-align:center;}
+  .scanner-results-scroll{max-height:500px;overflow-y:auto;border:1px solid #222235;border-radius:7px;}
+  .scanner-results-scroll thead th{position:sticky;top:0;z-index:2;background:#0a0a12;}
+  .scanner-stat{background:#0d0d14;border:1px solid #222235;border-radius:7px;padding:8px 14px;text-align:center;flex:1;min-width:80px;}
+  .scanner-stat .ss-val{font-family:'Oswald',sans-serif;font-size:1.3rem;color:#f5c518;}
+  .scanner-stat .ss-label{font-size:0.62rem;color:#555;text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
+  .backup-controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
+  .backup-info{background:#0a0a12;border:1px solid #222235;border-radius:7px;padding:10px 14px;font-size:0.75rem;color:#888;margin-bottom:10px;}
+  .backup-info strong{color:#f5c518;font-family:'Oswald',sans-serif;}
+  .file-input-hidden{display:none;}
+  .btn-export{background:linear-gradient(135deg,#1a3a1a,#0a2a0a);border:1px solid #2a5a2a;color:#6aaa6a;}
+  .btn-export:hover{background:#2a5a2a;color:#fff;}
+  .btn-import{background:linear-gradient(135deg,#1a1a3a,#0a0a2a);border:1px solid #2a2a5a;color:#5a8aff;}
+  .btn-import:hover{background:#2a2a5a;color:#fff;}
+  .empty-state{text-align:center;padding:30px;color:#333;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9998;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.2s;}
+  .modal-overlay.show{opacity:1;pointer-events:all;}
+  .modal-box{background:#111118;border:1px solid #3a1a1a;border-radius:12px;padding:28px;max-width:360px;width:90%;text-align:center;}
+  .modal-icon{font-size:2.2rem;margin-bottom:10px;}
+  .modal-title{font-family:'Oswald',sans-serif;font-size:1rem;color:#e74c3c;letter-spacing:1px;margin-bottom:8px;}
+  .modal-msg{font-size:0.8rem;color:#666;margin-bottom:20px;line-height:1.5;}
+  .modal-actions{display:flex;gap:10px;justify-content:center;}
+  .toast{position:fixed;bottom:20px;right:20px;left:20px;max-width:380px;margin:0 auto;background:#111118;border:1px solid #2a6a2a;color:#8aca8a;padding:11px 18px;border-radius:8px;font-size:0.82rem;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;text-align:center;font-family:'Oswald',sans-serif;}
+  .toast.show{opacity:1;}
+  .toast.error-toast{border-color:#5a2a2a;color:#ffaaaa;}
+  .error-counter{background:#3a1a1a;color:#ff7a7a;border:1px solid #5a2a2a;padding:3px 10px;border-radius:12px;font-size:0.72rem;font-family:'Oswald',sans-serif;margin-left:6px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div>
+      <div class="brand-name">VL CORNER</div>
+      <div class="brand-sub">Analisador de Mapa de Calor</div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <div class="card-title">🔑 CONFIGURAÇÃO DA API OPENAI</div>
+    <div id="apiSavedInfo" style="display:none">
+      <div class="saved-key-info">
+        <span>🔒 Chave salva: <span style="color:#f5c518" id="keyPreview"></span></span>
+        <button class="btn btn-secondary btn-sm" onclick="showChangeKey()">✏️ ALTERAR</button>
+        <button class="btn btn-secondary btn-sm" onclick="clearSavedKey()">🗑 REMOVER</button>
+        <button class="btn btn-warn btn-sm" onclick="testAPI()">🔌 TESTAR</button>
+      </div>
+    </div>
+    <div id="apiInputArea">
+      <div class="config-row">
+        <input type="password" id="apiKey" placeholder="Cole sua chave OpenAI aqui (sk-...)" style="flex:1;min-width:200px;">
+        <button class="btn btn-secondary" onclick="toggleKey()">👁</button>
+        <button class="btn btn-warn" onclick="testAPI()">🔌 TESTAR</button>
+        <button class="btn btn-primary" onclick="saveKey()">💾 SALVAR</button>
+      </div>
+      <div style="font-size:0.68rem;color:#444;margin-top:4px;">💾 Chave salva no navegador (localStorage).</div>
+    </div>
+    <div class="api-status" id="apiStatus"></div>
+  </div>
+
+  <div class="db-banner" id="dbBanner">
+    <div class="db-dot" id="dbDot"></div>
+    <div class="db-info">
+      <strong id="dbTitle">BANCO DE DADOS — 0 PARTIDAS</strong>
+      <span id="dbSub">Nenhuma partida salva ainda.</span>
+    </div>
+    <button class="btn btn-danger btn-sm" onclick="confirmResetDB()">🗑 RESETAR</button>
+    <div style="margin-top:14px;border-top:1px solid #222235;padding-top:14px;">
+      <div class="card-title" style="font-size:0.8rem;">💾 BACKUP DO BANCO</div>
+      <div id="backupInfo" class="backup-info"></div>
+      <div class="backup-controls">
+        <button class="btn btn-export" onclick="exportDB()">📤 EXPORTAR JSON</button>
+        <button class="btn btn-import" onclick="document.getElementById('importFile').click()">📥 IMPORTAR JSON</button>
+        <input type="file" id="importFile" class="file-input-hidden" accept=".json" onchange="importDB(event)">
+        <button class="btn btn-import" onclick="document.getElementById('importFileMerge').click()">🔀 IMPORTAR + MESCLAR</button>
+        <input type="file" id="importFileMerge" class="file-input-hidden" accept=".json" onchange="importDBMerge(event)">
+      </div>
+    </div>
+  </div>
+
+  <div class="mode-selector">
+    <button class="mode-btn active" id="modeBtn1" onclick="setMode(1)">🏟 1 EQUIPE — MAIOR ATAQUE</button>
+    <button class="mode-btn" id="modeBtn2" onclick="setMode(2)">🏟🏟 2 EQUIPES — AMBAS</button>
+  </div>
+
+  <div class="upload-grid">
+    <label class="upload-area" id="uploadArea" for="fileInput">
+      <div class="up-icon">📤</div>
+      <p><strong>Upload POSITIVO</strong> (com escanteio)</p>
+      <p>.jpg · .png · .webp · múltiplos</p>
+      <input type="file" id="fileInput" multiple accept="image/*" onchange="addFiles(this.files)" style="display:none;">
+    </label>
+    <label class="upload-area upload-neg" id="uploadAreaNeg" for="fileInputNeg">
+      <div class="up-icon">🚫</div>
+      <p><strong style="color:#ff7a7a;">Upload NEGATIVO</strong> (sem escanteio)</p>
+      <p style="color:#5a3a3a;">Salva como ❌ NEGATIVO</p>
+      <input type="file" id="fileInputNeg" multiple accept="image/*" onchange="addFilesNeg(this.files)" style="display:none;">
+    </label>
+  </div>
+
+  <div id="queueSection" style="display:none">
+    <div class="card">
+      <div class="card-title">📂 FILA — POSITIVOS (COM ESCANTEIO)</div>
+      <div class="scoreboard">
+        <div class="score-item"><div class="s-val" id="sc-total">0</div><div class="s-label">Fila</div></div>
+        <div class="score-item"><div class="s-val" id="sc-done" style="color:#6aaa6a">0</div><div class="s-label">OK</div></div>
+        <div class="score-item"><div class="s-val" id="sc-pending" style="color:#f5c518">0</div><div class="s-label">Pendentes</div></div>
+        <div class="score-item"><div class="s-val" id="sc-error" style="color:#e74c3c">0</div><div class="s-label">Erros</div></div>
+      </div>
+      <div class="queue-grid" id="queueGrid"></div>
+      <div class="actions-row">
+        <button class="btn btn-primary" id="btnAnalyze" onclick="startAnalysis()">▶ ANALISAR (3 em 3)</button>
+        <button class="btn btn-retry" id="btnRetry" onclick="retryErrors()" style="display:none">🔄 RETENTAR ERROS <span class="error-counter" id="errCount">0</span></button>
+        <button class="btn btn-danger btn-sm" onclick="confirmClearQueue()">🗑 LIMPAR</button>
+      </div>
+      <div class="actions-row">
+        <div class="progress-wrap"><div class="progress-fill" id="progressBar"></div></div>
+        <span id="progressText"></span>
+        <button class="btn btn-secondary btn-sm" onclick="toggleLog()">📋 LOG</button>
+      </div>
+      <div class="log-box" id="logBox"></div>
+    </div>
+  </div>
+
+  <div id="queueSectionNeg" style="display:none">
+    <div class="card">
+      <div class="card-title" style="color:#ff7a7a;">📂 FILA — NEGATIVOS (SEM ESCANTEIO)</div>
+      <div class="scoreboard">
+        <div class="score-item"><div class="s-val" id="sc-neg-total">0</div><div class="s-label">Fila</div></div>
+        <div class="score-item"><div class="s-val" id="sc-neg-done" style="color:#ff7a7a">0</div><div class="s-label">Salvas</div></div>
+        <div class="score-item"><div class="s-val" id="sc-neg-pending" style="color:#f5c518">0</div><div class="s-label">Pendentes</div></div>
+        <div class="score-item"><div class="s-val" id="sc-neg-error" style="color:#e74c3c">0</div><div class="s-label">Erros</div></div>
+      </div>
+      <div class="queue-grid" id="queueGridNeg"></div>
+      <div class="actions-row">
+        <button class="btn btn-danger" id="btnAnalyzeNeg" onclick="startAnalysisNeg()">▶ ANALISAR NEGATIVOS (3 em 3)</button>
+        <button class="btn btn-retry" id="btnRetryNeg" onclick="retryErrorsNeg()" style="display:none">🔄 RETENTAR ERROS <span class="error-counter" id="errCountNeg">0</span></button>
+        <button class="btn btn-danger btn-sm" onclick="confirmClearQueueNeg()">🗑 LIMPAR</button>
+      </div>
+      <div class="actions-row">
+        <div class="progress-wrap"><div class="progress-fill" id="progressBarNeg"></div></div>
+        <span id="progressTextNeg"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="tableSection" style="display:none">
+    <div class="card-title">📋 DADOS DA SESSÃO</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>ARQUIVO</th><th>TIPO</th><th>TIME DOM.</th><th>ATAQUE%</th><th>COR.1</th><th>COR.2</th><th>ADV.</th><th>ADV COR.1</th><th>ADV COR.2</th></tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" id="rank1Section" style="display:none">
+    <div class="card-title">📊 RANKING — 1 EQUIPE (MAIOR ATAQUE)</div>
+    <div class="rank-controls">
+      <label>ATAQUE:</label>
+      <select id="rank1FaixaAtaque" onchange="generateRank1()"><option value="2">2 pts</option><option value="3" selected>3 pts</option><option value="4">4 pts</option><option value="5">5 pts</option><option value="10">10 pts</option></select>
+      <label>COR.1:</label>
+      <select id="rank1FaixaCor1" onchange="generateRank1()"><option value="2">2 pts</option><option value="3" selected>3 pts</option><option value="4">4 pts</option><option value="5">5 pts</option><option value="10">10 pts</option></select>
+      <label>COR.2:</label>
+      <select id="rank1FaixaCor2" onchange="generateRank1()"><option value="2">2 pts</option><option value="3" selected>3 pts</option><option value="4">4 pts</option><option value="5">5 pts</option><option value="10">10 pts</option></select>
+      <label>ORDENAR:</label>
+      <select id="rank1Sort" onchange="generateRank1()"><option value="ocorrencias" selected>Ocorrências</option><option value="assertividade">Assertividade</option><option value="hit">HIT</option></select>
+    </div>
+    <div id="rank1Content"><div class="empty-state">Analise pelo menos 3 partidas para gerar o ranking.</div></div>
+  </div>
+
+  <div class="card" id="rank2Section" style="display:none">
+    <div class="card-title">📊 RANKING — 2 EQUIPES (AMBAS)</div>
+    <div class="rank-controls">
+      <label>DOM.1:</label>
+      <select id="rank2FaixaDom1" onchange="generateRank2()"><option value="2">2 pts</option><option value="3" selected>3 pts</option><option value="4">4 pts</option><option value="5">5 pts</option><option value="10">10 pts</option></select>
+      <label>DOM.2:</label>
+      <select id="rank2FaixaDom2" onchange="generateRank2()"><option value="2">2 pts</option><option value="3" selected>3 pts</option><option value="4">4 pts</option><option value="5">5 pts</option><option value="10">10 pts</option></select>
+      <label>ADV.1:</label>
+      <select id="rank2FaixaAdv1" onchange="generateRank2()"><option value="2">2 pts</option><option value="3" selected>3 pts</option><option value="4">4 pts</option><option value="5">5 pts</option><option value="10">10 pts</option></select>
+      <label>ADV.2:</label>
+      <select id="rank2FaixaAdv2" onchange="generateRank2()"><option value="2">2 pts</option><option value="3" selected>3 pts</option><option value="4">4 pts</option><option value="5">5 pts</option><option value="10">10 pts</option></select>
+      <label>ORDENAR:</label>
+      <select id="rank2Sort" onchange="generateRank2()"><option value="ocorrencias" selected>Ocorrências</option><option value="assertividade">Assertividade</option><option value="hit">HIT</option></select>
+    </div>
+    <div id="rank2Content"><div class="empty-state">Analise pelo menos 3 partidas para gerar o ranking.</div></div>
+  </div>
+
+</div>
+
+  <div class="card" id="scannerSection">
+    <div class="card-title">🔍 SCANNER DE PADRÕES</div>
+    <p style="font-size:0.72rem;color:#555;margin-bottom:12px;">Escaneia automaticamente TODAS as combinações de faixas e lados.</p>
+    <div class="scanner-controls">
+      <label>ASSERT. MÍNIMA:</label>
+      <select id="scanMinAssert"><option value="50">50%</option><option value="60">60%</option><option value="70" selected>70%</option><option value="75">75%</option><option value="80">80%</option><option value="85">85%</option><option value="90">90%</option><option value="95">95%</option><option value="100">100%</option></select>
+      <label>PARTIDAS MÍN.:</label>
+      <select id="scanMinPartidas"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option><option value="7">7</option><option value="10">10</option><option value="15">15</option></select>
+      <label>MODO:</label>
+      <select id="scanModo"><option value="1" selected>1 Equipe (Dominante)</option><option value="2">2 Equipes (Ambas)</option></select>
+      <button class="btn btn-primary" id="btnScan" onclick="runScanner()">🔍 ESCANEAR</button>
+    </div>
+    <div class="scanner-running" id="scannerRunning">⏳ Escaneando todas as combinações...</div>
+    <div id="scannerStats" style="display:none;margin-bottom:14px;"></div>
+    <div id="scannerContent"><div class="empty-state">Defina assertividade, mínimo de partidas e clique em ESCANEAR.</div></div>
+  </div>
+
+  <div class="card" id="autoScannerSection">
+    <div class="card-title">🧭 BUSCADOR AUTOMÁTICO DE PADRÕES</div>
+    <p style="font-size:0.72rem;color:#555;margin-bottom:12px;">Define a assertividade mínima e o mínimo de partidas; o buscador testa automaticamente várias faixas e combinações.</p>
+    <div class="scanner-controls" style="margin-bottom:10px;">
+      <label>ASSERT. MÍN.:</label>
+      <select id="autoMinAssert"><option value="50">50%</option><option value="60">60%</option><option value="70" selected>70%</option><option value="75">75%</option><option value="80">80%</option><option value="85">85%</option><option value="90">90%</option><option value="95">95%</option><option value="100">100%</option></select>
+      <label>PARTIDAS MÍN.:</label>
+      <select id="autoMinPartidas"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option><option value="7">7</option><option value="10">10</option><option value="15">15</option></select>
+      <label>MODO:</label>
+      <select id="autoModo"><option value="1" selected>1 Time (Dominante)</option><option value="2">2 Times (Ambos)</option></select>
+      <button class="btn btn-primary" id="btnAutoScan" onclick="runAutoScanner()">🚀 BUSCAR</button>
+    </div>
+    <div class="scanner-running" id="autoScannerRunning" style="display:none;">⏳ Buscando padrões...</div>
+    <div id="autoScannerStats" style="display:none;margin-bottom:14px;"></div>
+    <div id="autoScannerContent"><div class="empty-state">Escolha assertividade, mínimo de partidas e clique em BUSCAR.</div></div>
+  </div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <div class="modal-icon" id="modalIcon">⚠️</div>
+    <div class="modal-title" id="modalTitle">CONFIRMAR</div>
+    <div class="modal-msg" id="modalMsg"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">CANCELAR</button>
+      <button class="btn btn-danger" id="modalConfirmBtn">CONFIRMAR</button>
+    </div>
+  </div>
+</div>
+
+<div class="rank-detail-overlay" id="rankDetailOverlay">
+  <div class="rank-detail-box">
+    <div class="rank-detail-header">
+      <div class="rank-detail-title" id="rankDetailTitle">DETALHES</div>
+      <button class="rank-detail-close" onclick="closeRankDetail()">✕ FECHAR</button>
+    </div>
+    <div id="rankDetailSummary"></div>
+    <div id="rankDetailContent"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+const DB_KEY='vl_corner_db_v3';
+const LOTE=3;
+let imageQueue=[], imageQueueNeg=[], sessionResults=[], logLines=[];
+let currentMode=1;
+
+function loadDB(){try{return JSON.parse(localStorage.getItem(DB_KEY)||'[]');}catch(e){return[];}}
+function saveDB(data){localStorage.setItem(DB_KEY,JSON.stringify(data));}
+function addToDB(record){const db=loadDB();db.push({...record,savedAt:new Date().toISOString()});saveDB(db);updateDBBanner();generateCurrentRank();}
+
+function resetDB(){localStorage.removeItem(DB_KEY);sessionResults=[];logLines=[];imageQueue=[];imageQueueNeg=[];renderQueue();renderQueueNeg();document.getElementById('tableBody').innerHTML='';document.getElementById('tableSection').style.display='none';document.getElementById('progressBar').style.width='0%';document.getElementById('progressText').textContent='';document.getElementById('progressBarNeg').style.width='0%';document.getElementById('progressTextNeg').textContent='';document.getElementById('rank1Content').innerHTML='<div class="empty-state">Analise pelo menos 3 partidas.</div>';document.getElementById('rank2Content').innerHTML='<div class="empty-state">Analise pelo menos 3 partidas.</div>';updateDBBanner();updateErrorButtons();showToast('🗑 Banco zerado!');}
+
+function updateDBBanner(){const db=loadDB();const n=db.length;const pos=db.filter(r=>r.resultado!=='negativo').length;const neg=db.filter(r=>r.resultado==='negativo').length;const dot=document.getElementById('dbDot');document.getElementById('dbTitle').textContent=`BANCO DE DADOS — ${n} PARTIDA${n!==1?'S':''}`;if(n===0){document.getElementById('dbSub').textContent='Nenhuma partida salva ainda.';dot.style.background='#555';dot.style.boxShadow='0 0 6px #555';}else{const last=db[db.length-1];const dt=last.savedAt?new Date(last.savedAt).toLocaleString('pt-BR'):'-';document.getElementById('dbSub').textContent=`Última: ${dt} · ✅ ${pos} positivas · ❌ ${neg} negativas`;dot.style.background='#2a7a2a';dot.style.boxShadow='0 0 8px #2a7a2a';}}
+
+function setMode(m){currentMode=m;document.getElementById('modeBtn1').classList.toggle('active',m===1);document.getElementById('modeBtn2').classList.toggle('active',m===2);document.getElementById('rank1Section').style.display=m===1?'block':'none';document.getElementById('rank2Section').style.display=m===2?'block':'none';generateCurrentRank();}
+
+function padraoBarra(p,cor){let s='<div style="background:#111118;border:1px solid #222235;border-radius:7px;padding:8px 12px;margin-bottom:6px;">';s+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">';s+='<div style="font-size:0.78rem;color:#ccc;">'+p.nome+'</div>';s+='<div style="font-family:Oswald,sans-serif;font-size:1rem;color:'+cor+';">'+p.pct+'%</div>';s+='</div>';s+='<div style="background:#1a1a2e;border-radius:4px;height:6px;overflow:hidden;">';s+='<div style="width:'+p.pct+'%;height:100%;background:'+cor+';border-radius:4px;transition:width 0.5s;"></div>';s+='</div>';s+='<div style="font-size:0.65rem;color:#555;margin-top:3px;">'+p.pos+'✅ de '+p.total+' partidas</div>';s+='</div>';return s;}
+
+function generateCurrentRank(){const db=loadDB();const valid=db.filter(r=>r.top1_val!=null&&r.top2_val!=null);if(valid.length>=3){if(currentMode===1)generateRank1();if(currentMode===2)generateRank2();generateAlerts();}}
+
+function loadSavedKey(){const s=localStorage.getItem('vl_openai_key');if(s){document.getElementById('apiKey').value=s;document.getElementById('apiSavedInfo').style.display='block';document.getElementById('apiInputArea').style.display='none';document.getElementById('keyPreview').textContent=s.slice(0,8)+'••••'+s.slice(-4);}}
+function saveKey(){const k=document.getElementById('apiKey').value.trim();if(!k){showToast('⚠️ Digite a chave.',true);return;}localStorage.setItem('vl_openai_key',k);document.getElementById('keyPreview').textContent=k.slice(0,8)+'••••'+k.slice(-4);document.getElementById('apiSavedInfo').style.display='block';document.getElementById('apiInputArea').style.display='none';showToast('✅ Chave salva!');}
+function showChangeKey(){document.getElementById('apiSavedInfo').style.display='none';document.getElementById('apiInputArea').style.display='block';}
+function clearSavedKey(){localStorage.removeItem('vl_openai_key');document.getElementById('apiKey').value='';document.getElementById('apiSavedInfo').style.display='none';document.getElementById('apiInputArea').style.display='block';showToast('🗑 Removida.');}
+function getKey(){return document.getElementById('apiKey').value.trim();}
+function toggleKey(){const i=document.getElementById('apiKey');i.type=i.type==='password'?'text':'password';}
+async function testAPI(){const k=getKey();if(!k){showStatus('⚠️ Cole sua chave primeiro.','error');return;}showStatus('⏳ Testando...','loading');try{const r=await fetch('https://api.openai.com/v1/models',{headers:{'Authorization':'Bearer '+k}});const j=await r.json();if(r.ok)showStatus('✅ Chave válida!','ok');else showStatus('❌ '+(j.error?.message||'Inválida'),'error');}catch(e){showStatus('❌ Erro: '+e.message,'error');}}
+function showStatus(msg,type){const el=document.getElementById('apiStatus');el.textContent=msg;el.className='api-status '+type;el.style.display='block';}
+
+const uploadArea=document.getElementById('uploadArea');
+uploadArea.addEventListener('dragover',e=>{e.preventDefault();uploadArea.classList.add('drag');});
+uploadArea.addEventListener('dragleave',()=>uploadArea.classList.remove('drag'));
+uploadArea.addEventListener('drop',e=>{e.preventDefault();uploadArea.classList.remove('drag');addFiles(e.dataTransfer.files);});
+const uploadAreaNeg=document.getElementById('uploadAreaNeg');
+uploadAreaNeg.addEventListener('dragover',e=>{e.preventDefault();uploadAreaNeg.classList.add('drag');});
+uploadAreaNeg.addEventListener('dragleave',()=>uploadAreaNeg.classList.remove('drag'));
+uploadAreaNeg.addEventListener('drop',e=>{e.preventDefault();uploadAreaNeg.classList.remove('drag');addFilesNeg(e.dataTransfer.files);});
+
+function addFiles(files){Array.from(files).forEach(f=>{if(f.type.startsWith('image/'))imageQueue.push({file:f,status:'pending',result:null,errorMsg:''});});renderQueue();}
+function addFilesNeg(files){Array.from(files).forEach(f=>{if(f.type.startsWith('image/'))imageQueueNeg.push({file:f,status:'pending',result:null,errorMsg:''});});renderQueueNeg();}
+
+function renderQueue(){const s=document.getElementById('queueSection');if(!imageQueue.length){s.style.display='none';return;}s.style.display='block';document.getElementById('queueGrid').innerHTML=imageQueue.map((item,i)=>{const url=URL.createObjectURL(item.file);const bc=item.status==='done'?'#2a7a2a':item.status==='error'?'#6a2a2a':'#222235';return `<div class="thumb" id="thumb_${i}" style="border-color:${bc}"><img src="${url}" loading="lazy">${item.status==='error'&&item.errorMsg?`<div class="error-detail">${item.errorMsg.slice(0,80)}</div>`:''}<div class="status ${item.status}">${statusLabel(item.status,item.errorMsg)}</div></div>`;}).join('');updateScoreboard();updateErrorButtons();}
+
+function renderQueueNeg(){const s=document.getElementById('queueSectionNeg');if(!imageQueueNeg.length){s.style.display='none';return;}s.style.display='block';document.getElementById('sc-neg-total').textContent=imageQueueNeg.length;document.getElementById('sc-neg-done').textContent=imageQueueNeg.filter(i=>i.status==='done').length;document.getElementById('sc-neg-pending').textContent=imageQueueNeg.filter(i=>i.status==='pending').length;document.getElementById('sc-neg-error').textContent=imageQueueNeg.filter(i=>i.status==='error').length;document.getElementById('queueGridNeg').innerHTML=imageQueueNeg.map((item,i)=>{const url=URL.createObjectURL(item.file);const bc=item.status==='done'?'#6a2a2a':item.status==='error'?'#8a2a2a':'#2a1a1a';return `<div class="thumb" id="thumb_neg_${i}" style="border-color:${bc}"><img src="${url}" loading="lazy">${item.status==='error'&&item.errorMsg?`<div class="error-detail">${item.errorMsg.slice(0,80)}</div>`:''}<div class="status ${item.status}" style="${item.status==='done'?'background:rgba(100,20,20,0.9)':''}">${item.status==='done'?'❌ NEG':item.status==='processing'?'⏳':item.status==='error'?'✗ Erro':'⏸'}</div></div>`;}).join('');updateErrorButtons();}
+
+function updateScoreboard(){document.getElementById('sc-total').textContent=imageQueue.length;document.getElementById('sc-done').textContent=imageQueue.filter(i=>i.status==='done').length;document.getElementById('sc-pending').textContent=imageQueue.filter(i=>i.status==='pending').length;document.getElementById('sc-error').textContent=imageQueue.filter(i=>i.status==='error').length;}
+
+function updateErrorButtons(){const errPos=imageQueue.filter(i=>i.status==='error').length;const errNeg=imageQueueNeg.filter(i=>i.status==='error').length;const btnR=document.getElementById('btnRetry');const btnRN=document.getElementById('btnRetryNeg');if(btnR){btnR.style.display=errPos>0?'inline-flex':'none';const el=document.getElementById('errCount');if(el)el.textContent=errPos;}if(btnRN){btnRN.style.display=errNeg>0?'inline-flex':'none';const el=document.getElementById('errCountNeg');if(el)el.textContent=errNeg;}}
+
+function statusLabel(s,err){if(s==='error'){if(err&&err.includes('401'))return '✗ Chave';if(err&&err.includes('429'))return '✗ Créditos';return '✗ Erro';}return{pending:'AGUARDANDO',processing:'⏳...',done:'✓ OK'}[s]||s;}
+
+function addLog(msg,type='info'){const box=document.getElementById('logBox');const t=new Date().toLocaleTimeString('pt-BR');logLines.push(`<div class="log-line ${type}">[${t}] ${msg}</div>`);box.innerHTML=logLines.join('');box.scrollTop=box.scrollHeight;}
+function toggleLog(){const b=document.getElementById('logBox');b.style.display=b.style.display==='none'?'block':'none';}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function toBase64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=()=>rej(new Error('Falha'));r.readAsDataURL(file);});}
+function showToast(msg,isError=false){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show${isError?' error-toast':''}`;setTimeout(()=>t.classList.remove('show'),4000);}
+
+let modalCallback=null;
+function showModal(icon,title,msg,cb){document.getElementById('modalIcon').textContent=icon;document.getElementById('modalTitle').textContent=title;document.getElementById('modalMsg').textContent=msg;modalCallback=cb;document.getElementById('modalOverlay').classList.add('show');}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('show');modalCallback=null;}
+document.getElementById('modalConfirmBtn').onclick=()=>{const cb=modalCallback;closeModal();if(cb)cb();};
+document.getElementById('modalOverlay').onclick=e=>{if(e.target===document.getElementById('modalOverlay'))closeModal();};
+
+function confirmClearQueue(){showModal('🗑','LIMPAR FILA','Remove imagens da fila. Banco preservado.',()=>{imageQueue=[];sessionResults=[];logLines=[];renderQueue();document.getElementById('tableSection').style.display='none';document.getElementById('tableBody').innerHTML='';document.getElementById('progressBar').style.width='0%';document.getElementById('progressText').textContent='';showToast('✅ Fila limpa.');});}
+function confirmClearQueueNeg(){showModal('🗑','LIMPAR FILA (NEGATIVOS)','Remove as imagens NEGATIVAS da fila. Banco preservado.',()=>{imageQueueNeg=[];renderQueueNeg();document.getElementById('progressBarNeg').style.width='0%';document.getElementById('progressTextNeg').textContent='';updateErrorButtons();showToast('✅ Fila de negativos limpa.');});}
+function confirmResetDB(){const n=loadDB().length;showModal('⚠️','RESETAR BANCO',`Apagará ${n} partidas permanentemente. Não pode ser desfeito.`,()=>resetDB());}
+
+async function analyzeImage(apiKey,b64){
+  const prompt=`Você é um especialista em análise de heatmaps táticos de futebol.\n\nA imagem pode conter UM ou DOIS heatmaps (um por time, empilhados verticalmente).\n\nPASSO 1 — IDENTIFICAR PRESENÇA DE ATAQUE:\n- Leia o percentual de "Presença na área de ataque" exibido em cada heatmap.\n- O time dominante é aquele com MAIOR percentual.\n\nPASSO 2 — CASO DE EMPATE (ambos com 50%):\n- Analise a INTENSIDADE DO CALOR nos corredores laterais de cada time.\n- Escolha como dominante aquele com cores mais quentes nos laterais.\n- Use "criterio_desempate": "intensidade_calor_lateral".\n\nPASSO 3 — CORREDORES DO TIME DOMINANTE:\n- "corredor_esquerdo": % de atividade no corredor esquerdo.\n- "corredor_central": % de atividade no corredor central.\n- "corredor_direito": % de atividade no corredor direito.\n- Os três valores devem somar aproximadamente 100.\n\nPASSO 4 — CORREDORES DO TIME ADVERSÁRIO:\n- "corredor_esquerdo_adv": % de atividade no corredor esquerdo do adversário.\n- "corredor_central_adv": % de atividade no corredor central do adversário.\n- "corredor_direito_adv": % de atividade no corredor direito do adversário.\n- Os três valores devem somar aproximadamente 100.\n\nREGRAS:\n- "time_dominante": nome do time. Se não visível, use "Desconhecido".\n- "time_adversario": nome do outro time. Se não visível, use "Desconhecido".\n- "presenca_ataque_dominante": % do time dominante.\n- "presenca_ataque_adversario": % do adversário.\n- Todos os campos numéricos são OBRIGATÓRIOS. Use 0 se não determinar.\n- Se não houver empate, "criterio_desempate": "nenhum".\n\nRetorne SOMENTE JSON válido, sem texto extra:\n{"time_dominante":"nome","presenca_ataque_dominante":numero,"corredor_esquerdo":numero,"corredor_central":numero,"corredor_direito":numero,"time_adversario":"nome","presenca_ataque_adversario":numero,"corredor_esquerdo_adv":numero,"corredor_central_adv":numero,"corredor_direito_adv":numero,"criterio_desempate":"nenhum ou intensidade_calor_lateral"}`;
+  let resp;
+  try{resp=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},body:JSON.stringify({model:'gpt-4o',max_tokens:400,temperature:0,messages:[{role:'user',content:[{type:'text',text:prompt},{type:'image_url',image_url:{url:`data:image/jpeg;base64,${b64}`,detail:'high'}}]}]})});}catch(e){throw new Error(e.message.includes('fetch')?'Erro de rede':'Falha: '+e.message);}
+  if(!resp.ok){let m=`HTTP ${resp.status}`;try{const j=await resp.json();m=j.error?.message||m;}catch(_){}if(resp.status===401)m='Chave inválida (401)';if(resp.status===429)m='Rate limit (429)';throw new Error(m);}
+  const json=await resp.json();const text=json.choices?.[0]?.message?.content?.trim();if(!text)throw new Error('Resposta vazia');
+  try{const p=JSON.parse(text.replace(/```json|```/g,'').trim());p.time_dominante=p.time_dominante||'Desconhecido';p.time_adversario=p.time_adversario||'Desconhecido';p.presenca_ataque_dominante=p.presenca_ataque_dominante??0;p.presenca_ataque_adversario=p.presenca_ataque_adversario??0;p.corredor_esquerdo=p.corredor_esquerdo??0;p.corredor_central=p.corredor_central??0;p.corredor_direito=p.corredor_direito??0;p.corredor_esquerdo_adv=p.corredor_esquerdo_adv??0;p.corredor_central_adv=p.corredor_central_adv??0;p.corredor_direito_adv=p.corredor_direito_adv??0;
+  const cd=[{nome:'ESQ',val:p.corredor_esquerdo},{nome:'CEN',val:p.corredor_central},{nome:'DIR',val:p.corredor_direito}].sort((a,b)=>b.val-a.val);p.top1_nome=cd[0].nome;p.top1_val=cd[0].val;p.top2_nome=cd[1].nome;p.top2_val=cd[1].val;
+  const ca=[{nome:'ESQ',val:p.corredor_esquerdo_adv},{nome:'CEN',val:p.corredor_central_adv},{nome:'DIR',val:p.corredor_direito_adv}].sort((a,b)=>b.val-a.val);p.adv_top1_nome=ca[0].nome;p.adv_top1_val=ca[0].val;p.adv_top2_nome=ca[1].nome;p.adv_top2_val=ca[1].val;
+  return p;}catch(e){throw new Error('JSON inválido: '+text.slice(0,80));}
+}
+
+async function startAnalysis(){const k=getKey();if(!k){showToast('⚠️ Configure a chave!',true);return;}document.getElementById('logBox').style.display='block';await runAnalysis(imageQueue.filter(i=>i.status==='pending'),k,'positivo');}
+async function retryErrors(){const k=getKey();if(!k){showToast('⚠️ Configure a chave!',true);return;}const errs=imageQueue.filter(i=>i.status==='error');if(!errs.length){showToast('Nenhum erro.');return;}errs.forEach(i=>{i.status='pending';i.errorMsg='';});renderQueue();addLog(`🔄 Retentando ${errs.length} erro(s)...`,'warn');await runAnalysis(errs,k,'positivo');}
+
+async function runAnalysis(queue,apiKey,tipo){if(!queue.length){showToast('Nenhuma pendente.');return;}document.getElementById('btnAnalyze').disabled=true;let done=0;for(let i=0;i<queue.length;i+=LOTE){const lote=queue.slice(i,i+LOTE);lote.forEach(item=>{item.status='processing';});renderQueue();lote.forEach(item=>addLog(`Analisando: ${item.file.name}`,'info'));await Promise.all(lote.map(async item=>{try{const b64=await toBase64(item.file);const data=await analyzeImage(apiKey,b64);item.status='done';item.result=data;const record={filename:item.file.name,...data,resultado:tipo};sessionResults.push(record);addToDB(record);addTableRow(sessionResults.length,item.file.name,data,tipo);addLog(`✓ ${item.file.name} — Ataque:${data.presenca_ataque_dominante}% | ${data.top1_nome}:${data.top1_val}% ${data.top2_nome}:${data.top2_val}%`,'ok');document.getElementById('tableSection').style.display='block';}catch(e){item.status='error';item.errorMsg=e.message||String(e);addLog(`✗ ${item.file.name}: ${item.errorMsg}`,'err');}done++;renderQueue();document.getElementById('progressBar').style.width=Math.round(done/queue.length*100)+'%';document.getElementById('progressText').textContent=`${done}/${queue.length}`;}));if(i+LOTE<queue.length)await sleep(400);}document.getElementById('btnAnalyze').disabled=false;const erros=imageQueue.filter(i=>i.status==='error').length;showToast(erros>0?`⚠️ ${erros} erro(s) — use RETENTAR`:`✅ Concluído! ${loadDB().length} no banco.`,erros>0);}
+
+async function startAnalysisNeg(){const k=getKey();if(!k){showToast('⚠️ Configure a chave!',true);return;}document.getElementById('logBox').style.display='block';await runAnalysisNeg(imageQueueNeg.filter(i=>i.status==='pending'),k);}
+async function retryErrorsNeg(){const k=getKey();if(!k){showToast('⚠️ Configure a chave!',true);return;}const errs=imageQueueNeg.filter(i=>i.status==='error');if(!errs.length){showToast('Nenhum erro.');return;}errs.forEach(i=>{i.status='pending';i.errorMsg='';});renderQueueNeg();addLog(`🔄 [NEG] Retentando ${errs.length} erro(s)...`,'warn');await runAnalysisNeg(errs,k);}
+
+async function runAnalysisNeg(queue,apiKey){if(!queue.length){showToast('Nenhuma pendente.');return;}document.getElementById('btnAnalyzeNeg').disabled=true;let done=0;for(let i=0;i<queue.length;i+=LOTE){const lote=queue.slice(i,i+LOTE);lote.forEach(item=>{item.status='processing';});renderQueueNeg();lote.forEach(item=>addLog(`[NEG] Analisando: ${item.file.name}`,'info'));await Promise.all(lote.map(async item=>{try{const b64=await toBase64(item.file);const data=await analyzeImage(apiKey,b64);item.status='done';item.result=data;const record={filename:item.file.name,...data,resultado:'negativo'};sessionResults.push(record);addToDB(record);addTableRow(sessionResults.length,item.file.name,data,'negativo');addLog(`✗ [NEG] ${item.file.name} salvo`,'err');document.getElementById('tableSection').style.display='block';}catch(e){item.status='error';item.errorMsg=e.message||String(e);addLog(`Erro [NEG] ${item.file.name}: ${item.errorMsg}`,'err');}done++;renderQueueNeg();document.getElementById('progressBarNeg').style.width=Math.round(done/queue.length*100)+'%';document.getElementById('progressTextNeg').textContent=`${done}/${queue.length}`;}));if(i+LOTE<queue.length)await sleep(400);}document.getElementById('btnAnalyzeNeg').disabled=false;const erros=imageQueueNeg.filter(i=>i.status==='error').length;showToast(erros>0?`⚠️ ${erros} erro(s) negativos — use RETENTAR`:'❌ Negativos salvos!',erros>0);}
+
+function addTableRow(idx,filename,d,tipo){const tb=document.getElementById('tableBody');const tipoBadge=tipo==='negativo'?'<span class="badge badge-red">❌ NEG</span>':'<span class="badge badge-green">✅ POS</span>';const row=document.createElement('tr');row.innerHTML=`<td>${idx}</td><td title="${filename}">${filename.length>20?filename.slice(0,18)+'…':filename}</td><td>${tipoBadge}</td><td><span class="badge badge-gold">${d.time_dominante}</span></td><td><strong style="color:#f5c518">${d.presenca_ataque_dominante}%</strong></td><td>${d.top1_nome} <strong>${d.top1_val}%</strong></td><td>${d.top2_nome} <strong>${d.top2_val}%</strong></td><td><span class="badge badge-gold" style="opacity:0.7">${d.time_adversario}</span></td><td>${d.adv_top1_nome} <strong>${d.adv_top1_val}%</strong></td><td>${d.adv_top2_nome} <strong>${d.adv_top2_val}%</strong></td>`;tb.appendChild(row);}
+
+function ladoBadge(nome){const cls=nome==='ESQ'?'lado-esq':nome==='CEN'?'lado-cen':'lado-dir';const icon=nome==='ESQ'?'⬅':nome==='CEN'?'⬆':'➡';return `<span class="rank-lado ${cls}">${icon} ${nome}</span>`;}
+function makeFaixa(val,size){const base=Math.floor((Number(val)||0)/size)*size;return{min:base,max:base+size-1,label:`${base}%-${base+size-1}%`};}
+function hitBarHTML(positivos,negativos,total){const pct=total>0?Math.round(positivos/total*100):0;const cls=pct>=70?'hit-green':pct>=40?'hit-yellow':'hit-red';return `<div class="hit-bar"><div class="hit-bar-bg"><div class="hit-bar-fill ${cls}" style="width:${pct}%"></div></div><span style="font-size:0.72rem;color:#888;font-family:'Oswald',sans-serif;">${positivos}✅ ${negativos}❌ (${pct}%)</span></div>`;}
+function sortRankList(lista,sortBy){if(sortBy==='ocorrencias')lista.sort((a,b)=>b.total-a.total||b.assertividade-a.assertividade);else if(sortBy==='assertividade')lista.sort((a,b)=>b.assertividade-a.assertividade||b.total-a.total);else lista.sort((a,b)=>b.hit-a.hit||b.assertividade-a.assertividade);return lista;}
+function rankSummaryHTML(totalGeral,posGeral,negGeral,faixasCount){return `<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px;"><div style="background:#0d0d14;border:1px solid #222235;border-radius:7px;padding:8px 14px;text-align:center;"><div style="font-family:'Oswald',sans-serif;font-size:1.2rem;color:#f5c518;">${totalGeral}</div><div style="font-size:0.65rem;color:#555;text-transform:uppercase;">Total</div></div><div style="background:#0d0d14;border:1px solid #222235;border-radius:7px;padding:8px 14px;text-align:center;"><div style="font-family:'Oswald',sans-serif;font-size:1.2rem;color:#6aaa6a;">${posGeral}</div><div style="font-size:0.65rem;color:#555;text-transform:uppercase;">✅ Positivas</div></div><div style="background:#0d0d14;border:1px solid #222235;border-radius:7px;padding:8px 14px;text-align:center;"><div style="font-family:'Oswald',sans-serif;font-size:1.2rem;color:#ff7a7a;">${negGeral}</div><div style="font-size:0.65rem;color:#555;text-transform:uppercase;">❌ Negativas</div></div><div style="background:#0d0d14;border:1px solid #222235;border-radius:7px;padding:8px 14px;text-align:center;"><div style="font-family:'Oswald',sans-serif;font-size:1.2rem;color:#aaa;">${faixasCount}</div><div style="font-size:0.65rem;color:#555;text-transform:uppercase;">Faixas</div></div></div>`;}
+function confBadge(total,assertividade){if(total>=5&&assertividade>80)return '<span class="conf-badge conf-high">🟢 ALTA ('+total+'x · '+assertividade+'%)</span>';if(total>=3&&assertividade>=60&&assertividade<=80)return '<span class="conf-badge conf-med">🟡 MÉDIA ('+total+'x · '+assertividade+'%)</span>';return '<span class="conf-badge conf-low">🔴 BAIXA ('+total+'x · '+assertividade+'%)</span>';}
+
+function generateRank1(){const db=loadDB();const valid=db.filter(r=>r.presenca_ataque_dominante!=null&&r.top1_val!=null&&r.top2_val!=null);const cont=document.getElementById('rank1Content');const sec=document.getElementById('rank1Section');if(valid.length<3){sec.style.display=currentMode===1?'block':'none';cont.innerHTML='<div class="empty-state">Analise pelo menos 3 partidas para gerar o ranking.</div>';return;}sec.style.display=currentMode===1?'block':'none';const sizeAtaque=parseInt(document.getElementById('rank1FaixaAtaque').value,10);const sizeCor1=parseInt(document.getElementById('rank1FaixaCor1').value,10);const sizeCor2=parseInt(document.getElementById('rank1FaixaCor2').value,10);const sortBy=document.getElementById('rank1Sort').value;function flAtaque(v){return makeFaixa(Number(v)||0,sizeAtaque).label;}function flCor1(v){return makeFaixa(Number(v)||0,sizeCor1).label;}function flCor2(v){return makeFaixa(Number(v)||0,sizeCor2).label;}function key(r){return[flAtaque(r.presenca_ataque_dominante),r.top1_nome,flCor1(r.top1_val),r.top2_nome,flCor2(r.top2_val)].join('|');}const buckets=new Map();valid.forEach(r=>{const k=key(r);if(!buckets.has(k)){buckets.set(k,{k,faixaAtaque:flAtaque(r.presenca_ataque_dominante),lado1:r.top1_nome,faixaCor1:flCor1(r.top1_val),lado2:r.top2_nome,faixaCor2:flCor2(r.top2_val),total:0,positivos:0,negativos:0});}const b=buckets.get(k);b.total++;if(r.resultado==='negativo')b.negativos++;else b.positivos++;});let lista=[...buckets.values()].map(b=>{const assertividade=b.total>0?Math.round(b.positivos/b.total*100):0;const hit=b.positivos;return{...b,assertividade,hit};});lista=sortRankList(lista,sortBy);const totalGeral=valid.length;const posGeral=valid.filter(r=>r.resultado!=='negativo').length;const negGeral=valid.filter(r=>r.resultado==='negativo').length;if(!lista.length){cont.innerHTML='<div class="empty-state">Nenhuma faixa encontrada.</div>';return;}let html='';html+=rankSummaryHTML(totalGeral,posGeral,negGeral,lista.length);html+=`<div style="font-size:0.72rem;color:#555;margin-bottom:14px;padding:8px 12px;background:#0a0a12;border-radius:6px;border-left:3px solid #f5c518;">Modo 1 Equipe · Faixas: Ataque ${sizeAtaque}pts | COR.1 ${sizeCor1}pts | COR.2 ${sizeCor2}pts · Ordenação: ${sortBy}</div><div class="table-wrap rank-table-scroll"><table class="rank-table"><thead><tr><th>#</th><th>FAIXA ATAQUE</th><th>LADO 1</th><th>FAIXA COR.1</th><th>LADO 2</th><th>FAIXA COR.2</th><th>OCORR.</th><th>HIT (✅ / ❌)</th><th>ASSERT.%</th><th>CONFIANÇA</th></tr></thead><tbody>`;lista.forEach((b,i)=>{const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';const assertColor=b.assertividade>=70?'#6aaa6a':b.assertividade>=40?'#f5c518':'#ff7a7a';html+=`<tr class="rank-row-clickable" onclick="showRankDetail(makeRank1Filter('${b.faixaAtaque}','${b.lado1}','${b.faixaCor1}','${b.lado2}','${b.faixaCor2}',${sizeAtaque},${sizeCor1},${sizeCor2}),'${b.lado1} ${b.faixaCor1} + ${b.lado2} ${b.faixaCor2} · Ataque ${b.faixaAtaque}')"><td><span class="rank-pos">${medal}${i+1}</span></td><td><span class="rank-faixa">${b.faixaAtaque}</span></td><td>${ladoBadge(b.lado1)}</td><td><span class="rank-faixa">${b.faixaCor1}</span></td><td>${ladoBadge(b.lado2)}</td><td><span class="rank-faixa">${b.faixaCor2}</span></td><td style="text-align:center;"><strong style="font-family:'Oswald',sans-serif;font-size:1rem;color:#f5c518;">${b.total}x</strong></td><td>${hitBarHTML(b.positivos,b.negativos,b.total)}</td><td style="text-align:center;"><strong style="font-family:'Oswald',sans-serif;font-size:1rem;color:${assertColor}">${b.assertividade}%</strong></td><td style="text-align:center;">${confBadge(b.total,b.assertividade)}</td></tr>`;});html+=`</tbody></table></div>`;cont.innerHTML=html;}
+
+function generateRank2(){const db=loadDB();const valid=db.filter(r=>r.top1_val!=null&&r.top2_val!=null&&r.adv_top1_val!=null&&r.adv_top2_val!=null);const cont=document.getElementById('rank2Content');const sec=document.getElementById('rank2Section');if(valid.length<3){sec.style.display=currentMode===2?'block':'none';cont.innerHTML='<div class="empty-state">Analise pelo menos 3 partidas para gerar o ranking.</div>';return;}sec.style.display=currentMode===2?'block':'none';const sizeDom1=parseInt(document.getElementById('rank2FaixaDom1').value,10);const sizeDom2=parseInt(document.getElementById('rank2FaixaDom2').value,10);const sizeAdv1=parseInt(document.getElementById('rank2FaixaAdv1').value,10);const sizeAdv2=parseInt(document.getElementById('rank2FaixaAdv2').value,10);const sortBy=document.getElementById('rank2Sort').value;function flDom1(v){return makeFaixa(Number(v)||0,sizeDom1).label;}function flDom2(v){return makeFaixa(Number(v)||0,sizeDom2).label;}function flAdv1(v){return makeFaixa(Number(v)||0,sizeAdv1).label;}function flAdv2(v){return makeFaixa(Number(v)||0,sizeAdv2).label;}function key(r){return[r.top1_nome,flDom1(r.top1_val),r.top2_nome,flDom2(r.top2_val),r.adv_top1_nome,flAdv1(r.adv_top1_val),r.adv_top2_nome,flAdv2(r.adv_top2_val)].join('|');}const buckets=new Map();valid.forEach(r=>{const k=key(r);if(!buckets.has(k)){buckets.set(k,{k,lado1:r.top1_nome,faixaDomCor1:flDom1(r.top1_val),lado2:r.top2_nome,faixaDomCor2:flDom2(r.top2_val),advLado1:r.adv_top1_nome,faixaAdvCor1:flAdv1(r.adv_top1_val),advLado2:r.adv_top2_nome,faixaAdvCor2:flAdv2(r.adv_top2_val),total:0,positivos:0,negativos:0});}const b=buckets.get(k);b.total++;if(r.resultado==='negativo')b.negativos++;else b.positivos++;});let lista=[...buckets.values()].map(b=>{const assertividade=b.total>0?Math.round(b.positivos/b.total*100):0;const hit=b.positivos;return{...b,assertividade,hit};});lista=sortRankList(lista,sortBy);const totalGeral=valid.length;const posGeral=valid.filter(r=>r.resultado!=='negativo').length;const negGeral=valid.filter(r=>r.resultado==='negativo').length;if(!lista.length){cont.innerHTML='<div class="empty-state">Nenhuma faixa encontrada.</div>';return;}let html='';html+=rankSummaryHTML(totalGeral,posGeral,negGeral,lista.length);html+=`<div style="font-size:0.72rem;color:#555;margin-bottom:14px;padding:8px 12px;background:#0a0a12;border-radius:6px;border-left:3px solid #f5c518;">Modo 2 Equipes · Faixas: DOM.1 ${sizeDom1}pts | DOM.2 ${sizeDom2}pts | ADV.1 ${sizeAdv1}pts | ADV.2 ${sizeAdv2}pts · Ordenação: ${sortBy}</div><div class="table-wrap rank-table-scroll"><table class="rank-table"><thead><tr><th>#</th><th>DOM. LADO 1</th><th>DOM. COR.1</th><th>DOM. LADO 2</th><th>DOM. COR.2</th><th>ADV. LADO 1</th><th>ADV. COR.1</th><th>ADV. LADO 2</th><th>ADV. COR.2</th><th>OCORR.</th><th>HIT (✅ / ❌)</th><th>ASSERT.%</th><th>CONFIANÇA</th></tr></thead><tbody>`;lista.forEach((b,i)=>{const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';const assertColor=b.assertividade>=70?'#6aaa6a':b.assertividade>=40?'#f5c518':'#ff7a7a';html+=`<tr class="rank-row-clickable" onclick="showRankDetail(makeRank2Filter('${b.lado1}','${b.faixaDomCor1}','${b.lado2}','${b.faixaDomCor2}','${b.advLado1}','${b.faixaAdvCor1}','${b.advLado2}','${b.faixaAdvCor2}',${sizeDom1},${sizeDom2},${sizeAdv1},${sizeAdv2}),'DOM: ${b.lado1} ${b.faixaDomCor1} + ${b.lado2} ${b.faixaDomCor2} · ADV: ${b.advLado1} ${b.faixaAdvCor1} + ${b.advLado2} ${b.faixaAdvCor2}')"><td><span class="rank-pos">${medal}${i+1}</span></td><td>${ladoBadge(b.lado1)}</td><td><span class="rank-faixa">${b.faixaDomCor1}</span></td><td>${ladoBadge(b.lado2)}</td><td><span class="rank-faixa">${b.faixaDomCor2}</span></td><td>${ladoBadge(b.advLado1)}</td><td><span class="rank-faixa">${b.faixaAdvCor1}</span></td><td>${ladoBadge(b.advLado2)}</td><td><span class="rank-faixa">${b.faixaAdvCor2}</span></td><td style="text-align:center;"><strong style="font-family:'Oswald',sans-serif;font-size:1rem;color:#f5c518;">${b.total}x</strong></td><td>${hitBarHTML(b.positivos,b.negativos,b.total)}</td><td style="text-align:center;"><strong style="font-family:'Oswald',sans-serif;font-size:1rem;color:${assertColor}">${b.assertividade}%</strong></td><td style="text-align:center;">${confBadge(b.total,b.assertividade)}</td></tr>`;});html+=`</tbody></table></div>`;cont.innerHTML=html;}
+
+
+let rankDetailData=[];
+function closeRankDetail(){document.getElementById('rankDetailOverlay').classList.remove('show');}
+document.getElementById('rankDetailOverlay').onclick=e=>{if(e.target===document.getElementById('rankDetailOverlay'))closeRankDetail();};
+
+function showRankDetail(filtro,titulo){const db=loadDB();const matches=db.filter(filtro);const positivos=matches.filter(r=>r.resultado!=='negativo').length;const negativos=matches.length-positivos;const pct=matches.length>0?Math.round(positivos/matches.length*100):0;document.getElementById('rankDetailTitle').textContent='📋 '+titulo;let sumHTML='<div class="rank-detail-summary">';sumHTML+='<div class="rank-detail-stat"><div class="rd-val">'+matches.length+'</div><div class="rd-label">Total</div></div>';sumHTML+='<div class="rank-detail-stat"><div class="rd-val" style="color:#6aaa6a">'+positivos+'</div><div class="rd-label">✅ Positivas</div></div>';sumHTML+='<div class="rank-detail-stat"><div class="rd-val" style="color:#ff7a7a">'+negativos+'</div><div class="rd-label">❌ Negativas</div></div>';sumHTML+='<div class="rank-detail-stat"><div class="rd-val" style="color:'+(pct>=70?'#6aaa6a':pct>=40?'#f5c518':'#ff7a7a')+'">'+pct+'%</div><div class="rd-label">Assertividade</div></div>';sumHTML+='<div class="rank-detail-stat">'+confBadge(matches.length,pct)+'</div>';sumHTML+='</div>';document.getElementById('rankDetailSummary').innerHTML=sumHTML;let html='<table class="rank-detail-table"><thead><tr><th>#</th><th>ARQUIVO</th><th>TIPO</th><th>TIME DOM.</th><th>ATAQUE%</th><th>LADO 1</th><th>COR.1</th><th>LADO 2</th><th>COR.2</th><th>ADV.</th><th>ADV L.1</th><th>ADV C.1</th><th>ADV L.2</th><th>ADV C.2</th><th>DATA</th></tr></thead><tbody>';matches.forEach((r,i)=>{const tipo=r.resultado==='negativo'?'<span class="badge badge-red">❌ NEG</span>':'<span class="badge badge-green">✅ POS</span>';const dt=r.savedAt?new Date(r.savedAt).toLocaleDateString('pt-BR'):'—';const fn=r.filename||(r.arquivo||'—');html+=`<tr><td>${i+1}</td><td title="${fn}">${fn.length>18?fn.slice(0,16)+'…':fn}</td><td>${tipo}</td><td><span class="badge badge-gold">${r.time_dominante||'—'}</span></td><td><strong style="color:#f5c518">${r.presenca_ataque_dominante||0}%</strong></td><td>${ladoBadge(r.top1_nome||'—')}</td><td><strong>${r.top1_val||0}%</strong></td><td>${ladoBadge(r.top2_nome||'—')}</td><td><strong>${r.top2_val||0}%</strong></td><td><span class="badge badge-gold" style="opacity:0.7">${r.time_adversario||'—'}</span></td><td>${ladoBadge(r.adv_top1_nome||'—')}</td><td><strong>${r.adv_top1_val||0}%</strong></td><td>${ladoBadge(r.adv_top2_nome||'—')}</td><td><strong>${r.adv_top2_val||0}%</strong></td><td style="font-size:0.68rem;color:#555">${dt}</td></tr>`;});html+='</tbody></table>';if(!matches.length){html='<div class="empty-state">Nenhuma partida nesse grupo.</div>';}document.getElementById('rankDetailContent').innerHTML=html;document.getElementById('rankDetailOverlay').classList.add('show');}
+
+function makeRank1Filter(faixaAtaque,lado1,faixaCor1,lado2,faixaCor2,sizeAtaque,sizeCor1,sizeCor2){return function(r){if(r.presenca_ataque_dominante==null||r.top1_val==null||r.top2_val==null)return false;const flA=makeFaixa(Number(r.presenca_ataque_dominante)||0,sizeAtaque).label;const flC1=makeFaixa(Number(r.top1_val)||0,sizeCor1).label;const flC2=makeFaixa(Number(r.top2_val)||0,sizeCor2).label;return flA===faixaAtaque&&r.top1_nome===lado1&&flC1===faixaCor1&&r.top2_nome===lado2&&flC2===faixaCor2;};}
+function makeRank2Filter(lado1,fDC1,lado2,fDC2,aLado1,fAC1,aLado2,fAC2,sDom1,sDom2,sAdv1,sAdv2){return function(r){if(r.top1_val==null||r.top2_val==null||r.adv_top1_val==null||r.adv_top2_val==null)return false;const d1=makeFaixa(Number(r.top1_val)||0,sDom1).label;const d2=makeFaixa(Number(r.top2_val)||0,sDom2).label;const a1=makeFaixa(Number(r.adv_top1_val)||0,sAdv1).label;const a2=makeFaixa(Number(r.adv_top2_val)||0,sAdv2).label;return r.top1_nome===lado1&&d1===fDC1&&r.top2_nome===lado2&&d2===fDC2&&r.adv_top1_nome===aLado1&&a1===fAC1&&r.adv_top2_nome===aLado2&&a2===fAC2;};}
+
+// SCANNER ANTIGO
+function runScanner(){const db=loadDB();const valid=db.filter(r=>r.top1_val!=null&&r.top2_val!=null);if(valid.length<3){document.getElementById('scannerContent').innerHTML='<div class="empty-state">Analise pelo menos 3 partidas.</div>';return;}const minAssert=parseInt(document.getElementById('scanMinAssert').value,10);const minPartidas=parseInt(document.getElementById('scanMinPartidas').value,10);const modo=parseInt(document.getElementById('scanModo').value,10);const faixas=[2,3,4,5,10];document.getElementById('scannerRunning').style.display='block';document.getElementById('btnScan').disabled=true;setTimeout(()=>{let resultados;if(modo===1){resultados=scanModo1(valid,faixas,minAssert,minPartidas);}else{resultados=scanModo2(valid,faixas,minAssert,minPartidas);}resultados.lista=removeDuplicatas(resultados.lista,db,modo);document.getElementById('scannerRunning').style.display='none';document.getElementById('btnScan').disabled=false;renderScannerResults(resultados,modo,minAssert,minPartidas,faixas);},50);}
+
+function removeDuplicatas(lista,db,modo){const vistos=new Set();return lista.filter(b=>{let matches;if(modo===1){matches=db.filter(makeRank1Filter(b.faixaAtaque,b.lado1,b.faixaCor1,b.lado2,b.faixaCor2,b.sAtaque,b.sCor1,b.sCor2));}else{matches=db.filter(makeRank2Filter(b.lado1,b.faixaDomCor1,b.lado2,b.faixaDomCor2,b.advLado1,b.faixaAdvCor1,b.advLado2,b.faixaAdvCor2,b.sDom,b.sDom,b.sAdv,b.sAdv));}const ids=matches.map(m=>m.savedAt||m.filename).sort().join('|');if(vistos.has(ids))return false;vistos.add(ids);return true;});}
+
+function scanModo1(valid,faixas,minAssert,minPartidas){const resultados=[];let combosTestadas=0;faixas.forEach(sAtaque=>{faixas.forEach(sCor1=>{faixas.forEach(sCor2=>{const buckets={};valid.forEach(r=>{const fAtaque=makeFaixa(Number(r.presenca_ataque_dominante)||0,sAtaque).label;const fCor1=makeFaixa(Number(r.top1_val)||0,sCor1).label;const fCor2=makeFaixa(Number(r.top2_val)||0,sCor2).label;const k=r.top1_nome+'|'+fCor1+'|'+r.top2_nome+'|'+fCor2+'|'+fAtaque;if(!buckets[k])buckets[k]={faixaAtaque:fAtaque,lado1:r.top1_nome,faixaCor1:fCor1,lado2:r.top2_nome,faixaCor2:fCor2,sAtaque,sCor1,sCor2,total:0,positivos:0,negativos:0};buckets[k].total++;if(r.resultado==='negativo')buckets[k].negativos++;else buckets[k].positivos++;});Object.values(buckets).forEach(b=>{combosTestadas++;b.assertividade=b.total>0?Math.round(b.positivos/b.total*100):0;if(b.total>=minPartidas&&b.assertividade>=minAssert){resultados.push(b);}});});});});resultados.sort((a,b)=>b.assertividade-a.assertividade||b.total-a.total);return{lista:resultados,combosTestadas};}
+
+function scanModo2(valid,faixas,minAssert,minPartidas){const valid2=valid.filter(r=>r.adv_top1_val!=null&&r.adv_top2_val!=null);const resultados=[];let combosTestadas=0;faixas.forEach(sDom=>{faixas.forEach(sAdv=>{const buckets={};valid2.forEach(r=>{const fD1=makeFaixa(Number(r.top1_val)||0,sDom).label;const fD2=makeFaixa(Number(r.top2_val)||0,sDom).label;const fA1=makeFaixa(Number(r.adv_top1_val)||0,sAdv).label;const fA2=makeFaixa(Number(r.adv_top2_val)||0,sAdv).label;const k=r.top1_nome+'|'+fD1+'|'+r.top2_nome+'|'+fD2+'|'+r.adv_top1_nome+'|'+fA1+'|'+r.adv_top2_nome+'|'+fA2;if(!buckets[k])buckets[k]={lado1:r.top1_nome,faixaDomCor1:fD1,lado2:r.top2_nome,faixaDomCor2:fD2,advLado1:r.adv_top1_nome,faixaAdvCor1:fA1,advLado2:r.adv_top2_nome,faixaAdvCor2:fA2,sDom,sAdv,total:0,positivos:0,negativos:0};buckets[k].total++;if(r.resultado==='negativo')buckets[k].negativos++;else buckets[k].positivos++;});Object.values(buckets).forEach(b=>{combosTestadas++;b.assertividade=b.total>0?Math.round(b.positivos/b.total*100):0;if(b.total>=minPartidas&&b.assertividade>=minAssert){resultados.push(b);}});});});resultados.sort((a,b)=>b.assertividade-a.assertividade||b.total-a.total);return{lista:resultados,combosTestadas};}
+
+function renderScannerResults(data,modo,minAssert,minPartidas,faixas){const cont=document.getElementById('scannerContent');const statsDiv=document.getElementById('scannerStats');const lista=data.lista;const combos=data.combosTestadas;statsDiv.style.display='flex';statsDiv.style.gap='10px';statsDiv.style.flexWrap='wrap';statsDiv.innerHTML=`<div class="scanner-stat"><div class="ss-val">${combos.toLocaleString()}</div><div class="ss-label">Combos Testadas</div></div><div class="scanner-stat"><div class="ss-val" style="color:#6aaa6a">${lista.length}</div><div class="ss-label">Padrões Encontrados</div></div><div class="scanner-stat"><div class="ss-val" style="color:#aaa">${faixas.join(', ')}</div><div class="ss-label">Faixas (pts)</div></div><div class="scanner-stat"><div class="ss-val" style="color:#f5c518">≥${minAssert}%</div><div class="ss-label">Assert. Mínima</div></div><div class="scanner-stat"><div class="ss-val" style="color:#f5c518">≥${minPartidas}</div><div class="ss-label">Partidas Mín.</div></div>`;if(!lista.length){cont.innerHTML='<div class="empty-state">Nenhum padrão encontrado com esses critérios.</div>';return;}let html='';if(modo===1){html+=`<div class="scanner-results-scroll"><table class="rank-table"><thead><tr><th>#</th><th>FAIXAS</th><th>ATAQUE</th><th>LADO 1</th><th>COR.1</th><th>LADO 2</th><th>COR.2</th><th>OCORR.</th><th>HIT</th><th>ASSERT.</th><th>CONFIANÇA</th></tr></thead><tbody>`;lista.forEach((b,i)=>{const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';const ac=b.assertividade>=70?'#6aaa6a':b.assertividade>=40?'#f5c518':'#ff7a7a';html+=`<tr class="rank-row-clickable" onclick="showRankDetail(makeRank1Filter('${b.faixaAtaque}','${b.lado1}','${b.faixaCor1}','${b.lado2}','${b.faixaCor2}',${b.sAtaque},${b.sCor1},${b.sCor2}),'SCAN: ${b.lado1} ${b.faixaCor1} + ${b.lado2} ${b.faixaCor2} · Ataque ${b.faixaAtaque}')"><td><span class="rank-pos">${medal}${i+1}</span></td><td style="font-size:0.65rem;color:#666;">A:${b.sAtaque} C1:${b.sCor1} C2:${b.sCor2}</td><td><span class="rank-faixa">${b.faixaAtaque}</span></td><td>${ladoBadge(b.lado1)}</td><td><span class="rank-faixa">${b.faixaCor1}</span></td><td>${ladoBadge(b.lado2)}</td><td><span class="rank-faixa">${b.faixaCor2}</span></td><td style="text-align:center;"><strong style="font-family:'Oswald',sans-serif;font-size:1rem;color:#f5c518;">${b.total}x</strong></td><td>${hitBarHTML(b.positivos,b.negativos,b.total)}</td><td style="text-align:center;"><strong style="font-family:'Oswald',sans-serif;font-size:1rem;color:${ac}">${b.assertividade}%</strong></td><td style="text-align:center;">${confBadge(b.total,b.assertividade)}</td></tr>`;});html+=`</tbody></table></div>`;}else{html+=`<div class="scanner-results-scroll"><table class="rank-table"><thead><tr><th>#</th><th>FAIXAS</th><th>D.L1</th><th>D.C1</th><th>D.L2</th><th>D.C2</th><th>A.L1</th><th>A.C1</th><th>A.L2</th><th>A.C2</th><th>OCORR.</th><th>HIT</th><th>ASSERT.</th><th>CONFIANÇA</th></tr></thead><tbody>`;lista.forEach((b,i)=>{const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';const ac=b.assertividade>=70?'#6aaa6a':b.assertividade>=40?'#f5c518':'#ff7a7a';html+=`<tr class="rank-row-clickable" onclick="showRankDetail(makeRank2Filter('${b.lado1}','${b.faixaDomCor1}','${b.lado2}','${b.faixaDomCor2}','${b.advLado1}','${b.faixaAdvCor1}','${b.advLado2}','${b.faixaAdvCor2}',${b.sDom},${b.sDom},${b.sAdv},${b.sAdv}),'SCAN: DOM ${b.lado1}+${b.lado2} · ADV ${b.advLado1}+${b.advLado2}')"><td><span class="rank-pos">${medal}${i+1}</span></td><td style="font-size:0.65rem;color:#666;">D:${b.sDom} A:${b.sAdv}</td><td>${ladoBadge(b.lado1)}</td><td><span class="rank-faixa">${b.faixaDomCor1}</span></td><td>${ladoBadge(b.lado2)}</td><td><span class="rank-faixa">${b.faixaDomCor2}</span></td><td>${ladoBadge(b.advLado1)}</td><td><span class="rank-faixa">${b.faixaAdvCor1}</span></td><td>${ladoBadge(b.advLado2)}</td><td><span class="rank-faixa">${b.faixaAdvCor2}</span></td><td style="text-align:center;"><strong style="font-family:'Oswald',sans-serif;font-size:1rem;color:#f5c518;">${b.total}x</strong></td><td>${hitBarHTML(b.positivos,b.negativos,b.total)}</td><td style="text-align:center;"><strong style="font-family:'Oswald',sans-serif;font-size:1rem;color:${ac}">${b.assertividade}%</strong></td><td style="text-align:center;">${confBadge(b.total,b.assertividade)}</td></tr>`;});html+=`</tbody></table></div>`;}cont.innerHTML=html;showToast(`🔍 Scanner: ${lista.length} padrões encontrados em ${combos.toLocaleString()} combinações!`);}
+
+// EXPORT / IMPORT
+function exportDB(){const db=loadDB();if(!db.length){showToast('Banco vazio.',true);return;}const exportData={versao:'1.0',exportadoEm:new Date().toISOString(),totalPartidas:db.length,partidas:db};const blob=new Blob([JSON.stringify(exportData,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');const dataStr=new Date().toISOString().slice(0,10).replace(/-/g,'');a.href=url;a.download=`backup_banco_${dataStr}_${db.length}partidas.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);showToast(`📤 Exportado! ${db.length} partidas.`);updateBackupInfo();}
+
+function importDB(event){const file=event.target.files[0];if(!file)return;if(!confirm('⚠️ ATENÇÃO: Isso vai SUBSTITUIR todo o banco atual.\n\nTem certeza?')){event.target.value='';return;}const reader=new FileReader();reader.onload=function(e){try{const data=JSON.parse(e.target.result);let partidas;if(data.partidas&&Array.isArray(data.partidas)){partidas=data.partidas;}else if(Array.isArray(data)){partidas=data;}else{showToast('Formato inválido.',true);return;}if(!partidas.length){showToast('Arquivo vazio.',true);return;}saveDB(partidas);updateDBBanner();updateBackupInfo();generateCurrentRank();showToast(`📥 Importado! ${partidas.length} partidas.`);}catch(err){showToast('Erro: '+err.message,true);}};reader.readAsText(file);event.target.value='';}
+
+function importDBMerge(event){const file=event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(e){try{const data=JSON.parse(e.target.result);let partidas;if(data.partidas&&Array.isArray(data.partidas)){partidas=data.partidas;}else if(Array.isArray(data)){partidas=data;}else{showToast('Formato inválido.',true);return;}if(!partidas.length){showToast('Arquivo vazio.',true);return;}const dbAtual=loadDB();let novas=0;let duplicadas=0;partidas.forEach(p=>{const jaTem=dbAtual.some(existing=>existing.filename===p.filename&&existing.savedAt===p.savedAt&&existing.presenca_ataque_dominante===p.presenca_ataque_dominante);if(jaTem){duplicadas++;}else{dbAtual.push(p);novas++;}});saveDB(dbAtual);updateDBBanner();updateBackupInfo();generateCurrentRank();showToast(`🔀 Mesclado! ${novas} novas + ${duplicadas} duplicadas. Total: ${dbAtual.length}.`);}catch(err){showToast('Erro: '+err.message,true);}};reader.readAsText(file);event.target.value='';}
+
+function updateBackupInfo(){const el=document.getElementById('backupInfo');if(!el)return;const db=loadDB();const positivas=db.filter(r=>r.resultado!=='negativo').length;const negativas=db.length-positivas;if(!db.length){el.innerHTML='Banco vazio.';return;}const datas=db.filter(r=>r.savedAt).map(r=>new Date(r.savedAt));let infoData='';if(datas.length){const mais_antiga=new Date(Math.min(...datas)).toLocaleDateString('pt-BR');const mais_recente=new Date(Math.max(...datas)).toLocaleDateString('pt-BR');infoData=` · <strong>${mais_antiga}</strong> até <strong>${mais_recente}</strong>`;}el.innerHTML=`<strong>${db.length}</strong> partidas · <span style="color:#6aaa6a;">${positivas} ✅</span> · <span style="color:#ff7a7a;">${negativas} ❌</span>${infoData}`;}
+// ═══════════════════════════════════════════════════
+// BUSCADOR AUTOMÁTICO (faixas + limiares >=)
+// ═══════════════════════════════════════════════════
+const AUTO_FAIXAS = [2,3,4,5,10];
+const AUTO_LIMIARES = [30,35,40,45,50,55,60,65,70,75,80];
+
+function runAutoScanner(){
+  const db = loadDB();
+  const valid = db.filter(r=>r.top1_val!=null && r.top2_val!=null);
+  const cont = document.getElementById('autoScannerContent');
+
+  if(valid.length < 3){
+    cont.innerHTML = '<div class="empty-state">Analise pelo menos 3 partidas.</div>';
+    return;
+  }
+
+  const minAssert   = parseInt(document.getElementById('autoMinAssert').value,10);
+  const minPartidas = parseInt(document.getElementById('autoMinPartidas').value,10);
+  const modo        = parseInt(document.getElementById('autoModo').value,10);
+
+  document.getElementById('autoScannerRunning').style.display = 'block';
+  document.getElementById('btnAutoScan').disabled = true;
+
+  setTimeout(()=>{
+    let resultadoFaixas, resultadoLimiares;
+
+    if(modo===1){
+      resultadoFaixas   = autoScanModo1Faixas(valid, AUTO_FAIXAS, minAssert, minPartidas);
+      resultadoLimiares = autoScanModo1Limiares(valid, AUTO_LIMIARES, minAssert, minPartidas);
+    } else {
+      resultadoFaixas   = autoScanModo2Faixas(valid, AUTO_FAIXAS, minAssert, minPartidas);
+      resultadoLimiares = autoScanModo2Limiares(valid, AUTO_LIMIARES, minAssert, minPartidas);
+    }
+
+    let tudo = [
+      ...resultadoFaixas.lista.map(b=>({...b, tipo:b.tipo||'faixa'})),
+      ...resultadoLimiares.lista.map(b=>({...b, tipo:b.tipo||'limiar'}))
+    ];
+
+    tudo = tudo.map(b => {
+      if(b.tipo === 'limiar') return tightenPattern(b, valid);
+      return b;
+    });
+
+    const vistos = new Set();
+    tudo = tudo.filter(b => {
+      const chave = [b.tipo, b.lado1, b.limAtaque||b.faixaAtaque, b.limCor1||b.faixaCor1, b.lado2, b.limCor2||b.faixaCor2].join('|');
+      if(vistos.has(chave)) return false;
+      vistos.add(chave);
+      return true;
+    });
+
+    tudo.sort((a,b)=>b.assertividade-a.assertividade||b.total-a.total);
+
+    const totalCombos = resultadoFaixas.combosTestadas + resultadoLimiares.combosTestadas;
+    renderAutoScannerResults({lista:tudo, combosTestadas:totalCombos}, modo, minAssert, minPartidas, AUTO_FAIXAS);
+
+    document.getElementById('autoScannerRunning').style.display = 'none';
+    document.getElementById('btnAutoScan').disabled = false;
+  }, 40);
+}
+
+// MODO 1 — FAIXAS
+function autoScanModo1Faixas(valid, faixas, minAssert, minPartidas){
+  const buckets = [];
+  let combos = 0;
+  faixas.forEach(sAtaque=>{
+    faixas.forEach(sCor1=>{
+      faixas.forEach(sCor2=>{
+        const map = {};
+        valid.forEach(r=>{
+          const fA  = makeFaixa(Number(r.presenca_ataque_dominante)||0, sAtaque).label;
+          const fC1 = makeFaixa(Number(r.top1_val)||0, sCor1).label;
+          const fC2 = makeFaixa(Number(r.top2_val)||0, sCor2).label;
+          const k = [r.top1_nome,fC1,r.top2_nome,fC2,fA].join('|');
+          if(!map[k]) map[k]={tipo:'faixa',faixaAtaque:fA,lado1:r.top1_nome,faixaCor1:fC1,lado2:r.top2_nome,faixaCor2:fC2,sAtaque,sCor1,sCor2,total:0,positivos:0,negativos:0};
+          map[k].total++;
+          if(r.resultado==='negativo') map[k].negativos++; else map[k].positivos++;
+        });
+        Object.values(map).forEach(b=>{
+          combos++;
+          b.assertividade = b.total>0 ? Math.round(b.positivos/b.total*100) : 0;
+          if(b.total>=minPartidas && b.assertividade>=minAssert) buckets.push(b);
+        });
+      });
+    });
+  });
+  buckets.sort((a,b)=>b.assertividade-a.assertividade||b.total-a.total);
+  return {lista:buckets, combosTestadas:combos};
+}
+
+// MODO 1 — LIMIARES
+function autoScanModo1Limiares(valid, limiares, minAssert, minPartidas){
+  const buckets = [];
+  let combos = 0;
+  const lados = ['ESQ','CEN','DIR'];
+  limiares.forEach(limAtaque=>{
+    lados.forEach(lado1=>{
+      limiares.forEach(limCor1=>{
+        lados.forEach(lado2=>{
+          if(lado2===lado1) return;
+          limiares.forEach(limCor2=>{
+            combos++;
+            const matches = valid.filter(r=>{
+              return (Number(r.presenca_ataque_dominante)||0) >= limAtaque &&
+                     r.top1_nome===lado1 && (Number(r.top1_val)||0) >= limCor1 &&
+                     r.top2_nome===lado2 && (Number(r.top2_val)||0) >= limCor2;
+            });
+            if(matches.length < minPartidas) return;
+            const positivos = matches.filter(r=>r.resultado!=='negativo').length;
+            const negativos = matches.length - positivos;
+            const assertividade = Math.round(positivos/matches.length*100);
+            if(assertividade >= minAssert){
+              buckets.push({tipo:'limiar',limAtaque,lado1,limCor1,lado2,limCor2,total:matches.length,positivos,negativos,assertividade,descAtaque:`≥${limAtaque}%`,descCor1:`≥${limCor1}%`,descCor2:`≥${limCor2}%`});
+            }
+          });
+        });
+      });
+    });
+  });
+  buckets.sort((a,b)=>b.assertividade-a.assertividade||b.total-a.total);
+  return {lista:buckets, combosTestadas:combos};
+}
+
+// TIGHTENING
+function tightenLimiar(valor, partidas, campo, tolerancia){
+  const totalOriginal = partidas.length;
+  const minManter = Math.floor(totalOriginal * tolerancia);
+  let melhor = valor;
+  for(let atual = valor + 1; atual <= 100; atual++){
+    const restantes = partidas.filter(r => (Number(r[campo])||0) >= atual);
+    if(restantes.length >= minManter){ melhor = atual; } else { break; }
+  }
+  return melhor;
+}
+
+function tightenPattern(b, valid){
+  if(b.tipo !== 'limiar') return b;
+  const matches = valid.filter(r => {
+    return (Number(r.presenca_ataque_dominante)||0) >= b.limAtaque &&
+           r.top1_nome === b.lado1 && (Number(r.top1_val)||0) >= b.limCor1 &&
+           r.top2_nome === b.lado2 && (Number(r.top2_val)||0) >= b.limCor2;
+  });
+  if(matches.length < 3) return b;
+  const novoLimAtaque = tightenLimiar(b.limAtaque, matches, 'presenca_ataque_dominante', 0.90);
+  const novoLimCor1   = tightenLimiar(b.limCor1, matches, 'top1_val', 0.90);
+  const novoLimCor2   = tightenLimiar(b.limCor2, matches, 'top2_val', 0.90);
+  const matchesNovos = valid.filter(r => {
+    return (Number(r.presenca_ataque_dominante)||0) >= novoLimAtaque &&
+           r.top1_nome === b.lado1 && (Number(r.top1_val)||0) >= novoLimCor1 &&
+           r.top2_nome === b.lado2 && (Number(r.top2_val)||0) >= novoLimCor2;
+  });
+  const positivos = matchesNovos.filter(r => r.resultado !== 'negativo').length;
+  const negativos = matchesNovos.length - positivos;
+  const assertividade = matchesNovos.length > 0 ? Math.round(positivos/matchesNovos.length*100) : 0;
+  const mudou = novoLimAtaque !== b.limAtaque || novoLimCor1 !== b.limCor1 || novoLimCor2 !== b.limCor2;
+  return {...b,limAtaqueOriginal:b.limAtaque,limCor1Original:b.limCor1,limCor2Original:b.limCor2,limAtaque:novoLimAtaque,limCor1:novoLimCor1,limCor2:novoLimCor2,descAtaque:`≥${novoLimAtaque}%`,descCor1:`≥${novoLimCor1}%`,descCor2:`≥${novoLimCor2}%`,total:matchesNovos.length,positivos,negativos,assertividade,apertado:mudou,apertadoInfo:mudou?`ATQ:${b.limAtaque}→${novoLimAtaque} C1:${b.limCor1}→${novoLimCor1} C2:${b.limCor2}→${novoLimCor2}`:''};
+}
+
+// MODO 2 — FAIXAS
+function autoScanModo2Faixas(valid, faixas, minAssert, minPartidas){
+  const v2 = valid.filter(r=>r.adv_top1_val!=null && r.adv_top2_val!=null);
+  const buckets = [];
+  let combos = 0;
+  faixas.forEach(sDom=>{
+    faixas.forEach(sAdv=>{
+      const map = {};
+      v2.forEach(r=>{
+        const fD1=makeFaixa(Number(r.top1_val)||0, sDom).label;
+        const fD2=makeFaixa(Number(r.top2_val)||0, sDom).label;
+        const fA1=makeFaixa(Number(r.adv_top1_val)||0, sAdv).label;
+        const fA2=makeFaixa(Number(r.adv_top2_val)||0, sAdv).label;
+        const k=[r.top1_nome,fD1,r.top2_nome,fD2,r.adv_top1_nome,fA1,r.adv_top2_nome,fA2].join('|');
+        if(!map[k]) map[k]={tipo:'faixa',lado1:r.top1_nome,faixaDomCor1:fD1,lado2:r.top2_nome,faixaDomCor2:fD2,advLado1:r.adv_top1_nome,faixaAdvCor1:fA1,advLado2:r.adv_top2_nome,faixaAdvCor2:fA2,sDom,sAdv,total:0,positivos:0,negativos:0};
+        map[k].total++;
+        if(r.resultado==='negativo') map[k].negativos++; else map[k].positivos++;
+      });
+      Object.values(map).forEach(b=>{
+        combos++;
+        b.assertividade = b.total>0 ? Math.round(b.positivos/b.total*100) : 0;
+        if(b.total>=minPartidas && b.assertividade>=minAssert) buckets.push(b);
+      });
+    });
+  });
+  buckets.sort((a,b)=>b.assertividade-a.assertividade||b.total-a.total);
+  return {lista:buckets, combosTestadas:combos};
+}
+
+// MODO 2 — LIMIARES
+function autoScanModo2Limiares(valid, limiares, minAssert, minPartidas){
+  const v2 = valid.filter(r=>r.adv_top1_val!=null && r.adv_top2_val!=null);
+  const buckets = [];
+  let combos = 0;
+  const lados = ['ESQ','CEN','DIR'];
+  const limReduzido = limiares.filter(l=> l % 10 === 0 || l === 35 || l === 45 || l === 55 || l === 65 || l === 75);
+  lados.forEach(lado1=>{
+    limReduzido.forEach(limD1=>{
+      lados.forEach(lado2=>{
+        if(lado2===lado1) return;
+        limReduzido.forEach(limD2=>{
+          lados.forEach(advLado1=>{
+            limReduzido.forEach(limA1=>{
+              lados.forEach(advLado2=>{
+                if(advLado2===advLado1) return;
+                limReduzido.forEach(limA2=>{
+                  combos++;
+                  const matches = v2.filter(r=>{
+                    return r.top1_nome===lado1 && (Number(r.top1_val)||0)>=limD1 &&
+                           r.top2_nome===lado2 && (Number(r.top2_val)||0)>=limD2 &&
+                           r.adv_top1_nome===advLado1 && (Number(r.adv_top1_val)||0)>=limA1 &&
+                           r.adv_top2_nome===advLado2 && (Number(r.adv_top2_val)||0)>=limA2;
+                  });
+                  if(matches.length < minPartidas) return;
+                  const positivos = matches.filter(r=>r.resultado!=='negativo').length;
+                  const negativos = matches.length - positivos;
+                  const assertividade = Math.round(positivos/matches.length*100);
+                  if(assertividade >= minAssert){
+                    buckets.push({tipo:'limiar',lado1,limD1,descDomCor1:`≥${limD1}%`,lado2,limD2,descDomCor2:`≥${limD2}%`,advLado1,limA1,descAdvCor1:`≥${limA1}%`,advLado2,limA2,descAdvCor2:`≥${limA2}%`,total:matches.length,positivos,negativos,assertividade});
+                  }
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+  buckets.sort((a,b)=>b.assertividade-a.assertividade||b.total-a.total);
+  return {lista:buckets, combosTestadas:combos};
+}
+
+// RENDER AUTO SCANNER
+function renderAutoScannerResults(data, modo, minAssert, minPartidas, faixas){
+  const cont  = document.getElementById('autoScannerContent');
+  const stats = document.getElementById('autoScannerStats');
+  const lista = data.lista;
+  const combos = data.combosTestadas;
+
+  stats.style.display='flex';
+  stats.style.gap='10px';
+  stats.style.flexWrap='wrap';
+
+  const totalFaixas   = lista.filter(b=>b.tipo==='faixa').length;
+  const totalLimiares = lista.filter(b=>b.tipo==='limiar').length;
+  const totalAjustados = lista.filter(b=>b.apertado).length;
+
+  stats.innerHTML=`
+    <div class="scanner-stat"><div class="ss-val">${combos.toLocaleString()}</div><div class="ss-label">Combinações</div></div>
+    <div class="scanner-stat"><div class="ss-val" style="color:#6aaa6a">${lista.length}</div><div class="ss-label">Padrões</div></div>
+    <div class="scanner-stat"><div class="ss-val" style="color:#aaa">${totalFaixas}</div><div class="ss-label">📊 Faixas</div></div>
+    <div class="scanner-stat"><div class="ss-val" style="color:#5aaaff">${totalLimiares}</div><div class="ss-label">📈 Limiares</div></div>
+    ${totalAjustados>0?`<div class="scanner-stat"><div class="ss-val" style="color:#6aaa6a">${totalAjustados}</div><div class="ss-label">🎯 Ajustados</div></div>`:''}
+    <div class="scanner-stat"><div class="ss-val" style="color:#f5c518">≥${minAssert}%</div><div class="ss-label">Assert.</div></div>
+    <div class="scanner-stat"><div class="ss-val" style="color:#f5c518">≥${minPartidas}</div><div class="ss-label">Partidas</div></div>`;
+
+  if(!lista.length){
+    cont.innerHTML='<div class="empty-state">Nenhum padrão atingiu os critérios. Tente reduzir filtros.</div>';
+    return;
+  }
+
+  const pn = (p,n)=>`<span style="font-family:'Oswald',sans-serif;font-size:0.82rem;"><span style="color:#6aaa6a;">${p}✓</span> <span style="color:#ff7a7a;">${n}✗</span></span>`;
+
+  const tipoBadge = (b)=>{
+    if(b.tipo==='limiar' && b.apertado) return '<span style="background:#0a1a0a;color:#6aaa6a;border:1px solid #1a3a1a;border-radius:4px;padding:1px 6px;font-size:0.6rem;font-family:Oswald,sans-serif;">🎯 ≥</span>';
+    if(b.tipo==='limiar') return '<span style="background:#0a1a2a;color:#5aaaff;border:1px solid #1a3a5a;border-radius:4px;padding:1px 6px;font-size:0.6rem;font-family:Oswald,sans-serif;">≥</span>';
+    return '<span style="background:#1a1a0a;color:#f5c518;border:1px solid #3a3a1a;border-radius:4px;padding:1px 6px;font-size:0.6rem;font-family:Oswald,sans-serif;">F</span>';
+  };
+
+  let html='';
+
+  if(modo===1){
+    html+=`<div class="scanner-results-scroll"><table class="rank-table"><thead><tr><th>#</th><th>TIPO</th><th>DET.</th><th>ATAQUE</th><th>L1</th><th>C1</th><th>L2</th><th>C2</th><th>OCORR.</th><th>HIT</th><th>ASSERT.</th><th>CONF.</th></tr></thead><tbody>`;
+
+    lista.forEach((b,i)=>{
+      const ac=b.assertividade>=70?'#6aaa6a':b.assertividade>=40?'#f5c518':'#ff7a7a';
+      const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+      let onclick, detLabel, atkLabel, c1Label, c2Label;
+
+      if(b.tipo==='faixa'){
+        onclick=`showRankDetail(makeRank1Filter('${b.faixaAtaque}','${b.lado1}','${b.faixaCor1}','${b.lado2}','${b.faixaCor2}',${b.sAtaque},${b.sCor1},${b.sCor2}),'${b.lado1} ${b.faixaCor1} + ${b.lado2} ${b.faixaCor2} · Ataque ${b.faixaAtaque}')`;
+        detLabel=`<span style="font-size:0.6rem;color:#666;">A:${b.sAtaque} C1:${b.sCor1} C2:${b.sCor2}</span>`;
+        atkLabel=`<span class="rank-faixa">${b.faixaAtaque}</span>`;
+        c1Label=`<span class="rank-faixa">${b.faixaCor1}</span>`;
+        c2Label=`<span class="rank-faixa">${b.faixaCor2}</span>`;
+      } else {
+        onclick=`showRankDetail(makeAutoLimiarFilter1(${b.limAtaque},'${b.lado1}',${b.limCor1},'${b.lado2}',${b.limCor2}),'Ataque ≥${b.limAtaque}% · ${b.lado1} ≥${b.limCor1}% · ${b.lado2} ≥${b.limCor2}%')`;
+        if(b.apertado){
+          detLabel=`<span style="font-size:0.58rem;color:#6aaa6a;" title="${b.apertadoInfo}">🎯 Ajustado</span>`;
+          atkLabel=`<span class="rank-faixa" style="color:#6aaa6a;">${b.descAtaque}</span>`;
+          c1Label=`<span class="rank-faixa" style="color:#6aaa6a;">${b.descCor1}</span>`;
+          c2Label=`<span class="rank-faixa" style="color:#6aaa6a;">${b.descCor2}</span>`;
+        } else {
+          detLabel=`<span style="font-size:0.6rem;color:#5aaaff;">Limiar</span>`;
+          atkLabel=`<span class="rank-faixa" style="color:#5aaaff;">${b.descAtaque}</span>`;
+          c1Label=`<span class="rank-faixa" style="color:#5aaaff;">${b.descCor1}</span>`;
+          c2Label=`<span class="rank-faixa" style="color:#5aaaff;">${b.descCor2}</span>`;
+        }
+      }
+
+      html+=`<tr class="rank-row-clickable" onclick="${onclick}"><td><span class="rank-pos">${medal}${i+1}</span></td><td>${tipoBadge(b)}</td><td>${detLabel}</td><td>${atkLabel}</td><td>${ladoBadge(b.lado1)}</td><td>${c1Label}</td><td>${ladoBadge(b.lado2)}</td><td>${c2Label}</td><td style="text-align:center;"><strong style="font-family:'Oswald',sans-serif;color:#f5c518;">${b.total}x</strong></td><td style="text-align:center;">${pn(b.positivos,b.negativos)}</td><td style="text-align:center;"><strong style="font-family:'Oswald',sans-serif;color:${ac}">${b.assertividade}%</strong></td><td style="text-align:center;">${confBadge(b.total,b.assertividade)}</td></tr>`;
+    });
+
+    html+=`</tbody></table></div>`;
+
+  } else {
+    html+=`<div class="scanner-results-scroll"><table class="rank-table"><thead><tr><th>#</th><th>TIPO</th><th>DET.</th><th>D.L1</th><th>D.C1</th><th>D.L2</th><th>D.C2</th><th>A.L1</th><th>A.C1</th><th>A.L2</th><th>A.C2</th><th>OCORR.</th><th>HIT</th><th>ASSERT.</th><th>CONF.</th></tr></thead><tbody>`;
+
+    lista.forEach((b,i)=>{
+      const ac=b.assertividade>=70?'#6aaa6a':b.assertividade>=40?'#f5c518':'#ff7a7a';
+      const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+      let onclick;
+
+      if(b.tipo==='faixa'){
+        onclick=`showRankDetail(makeRank2Filter('${b.lado1}','${b.faixaDomCor1}','${b.lado2}','${b.faixaDomCor2}','${b.advLado1}','${b.faixaAdvCor1}','${b.advLado2}','${b.faixaAdvCor2}',${b.sDom},${b.sDom},${b.sAdv},${b.sAdv}),'DOM ${b.lado1}+${b.lado2} · ADV ${b.advLado1}+${b.advLado2}')`;
+        html+=`<tr class="rank-row-clickable" onclick="${onclick}"><td><span class="rank-pos">${medal}${i+1}</span></td><td>${tipoBadge(b)}</td><td style="font-size:0.6rem;color:#666;">D:${b.sDom} A:${b.sAdv}</td><td>${ladoBadge(b.lado1)}</td><td><span class="rank-faixa">${b.faixaDomCor1}</span></td><td>${ladoBadge(b.lado2)}</td><td><span class="rank-faixa">${b.faixaDomCor2}</span></td><td>${ladoBadge(b.advLado1)}</td><td><span class="rank-faixa">${b.faixaAdvCor1}</span></td><td>${ladoBadge(b.advLado2)}</td><td><span class="rank-faixa">${b.faixaAdvCor2}</span></td><td style="text-align:center;"><strong style="font-family:'Oswald',sans-serif;color:#f5c518;">${b.total}x</strong></td><td style="text-align:center;">${pn(b.positivos,b.negativos)}</td><td style="text-align:center;"><strong style="font-family:'Oswald',sans-serif;color:${ac}">${b.assertividade}%</strong></td><td style="text-align:center;">${confBadge(b.total,b.assertividade)}</td></tr>`;
+      } else {
+        onclick=`showRankDetail(makeAutoLimiarFilter2('${b.lado1}',${b.limD1},'${b.lado2}',${b.limD2},'${b.advLado1}',${b.limA1},'${b.advLado2}',${b.limA2}),'DOM ${b.lado1}≥${b.limD1}%+${b.lado2}≥${b.limD2}% · ADV ${b.advLado1}≥${b.limA1}%+${b.advLado2}≥${b.limA2}%')`;
+        html+=`<tr class="rank-row-clickable" onclick="${onclick}"><td><span class="rank-pos">${medal}${i+1}</span></td><td>${tipoBadge(b)}</td><td style="font-size:0.6rem;color:#5aaaff;">≥</td><td>${ladoBadge(b.lado1)}</td><td><span class="rank-faixa" style="color:#5aaaff;">${b.descDomCor1}</span></td><td>${ladoBadge(b.lado2)}</td><td><span class="rank-faixa" style="color:#5aaaff;">${b.descDomCor2}</span></td><td>${ladoBadge(b.advLado1)}</td><td><span class="rank-faixa" style="color:#5aaaff;">${b.descAdvCor1}</span></td><td>${ladoBadge(b.advLado2)}</td><td><span class="rank-faixa" style="color:#5aaaff;">${b.descAdvCor2}</span></td><td style="text-align:center;"><strong style="font-family:'Oswald',sans-serif;color:#f5c518;">${b.total}x</strong></td><td style="text-align:center;">${pn(b.positivos,b.negativos)}</td><td style="text-align:center;"><strong style="font-family:'Oswald',sans-serif;color:${ac}">${b.assertividade}%</strong></td><td style="text-align:center;">${confBadge(b.total,b.assertividade)}</td></tr>`;
+      }
+    });
+
+    html+=`</tbody></table></div>`;
+  }
+
+  html+=`<div style="margin-top:14px;padding:10px;background:#0a0a12;border:1px solid #222235;border-radius:7px;font-size:0.65rem;color:#555;line-height:1.8;"><strong style="color:#f5c518;">F</strong> = Busca por Faixa · <strong style="color:#5aaaff;">≥</strong> = Busca por Limiar · <strong style="color:#6aaa6a;">🎯 ≥</strong> = Limiar auto-ajustado</div>`;
+
+  cont.innerHTML = html;
+  showToast(`🧭 Buscador: ${lista.length} padrões (${totalAjustados} ajustados) em ${combos.toLocaleString()} combinações!`);
+}
+
+// FILTROS LIMIAR
+function makeAutoLimiarFilter1(limAtaque,lado1,limCor1,lado2,limCor2){
+  return function(r){
+    if(r.top1_val==null||r.top2_val==null) return false;
+    return (Number(r.presenca_ataque_dominante)||0) >= limAtaque &&
+           r.top1_nome===lado1 && (Number(r.top1_val)||0) >= limCor1 &&
+           r.top2_nome===lado2 && (Number(r.top2_val)||0) >= limCor2;
+  };
+}
+
+function makeAutoLimiarFilter2(lado1,limD1,lado2,limD2,advLado1,limA1,advLado2,limA2){
+  return function(r){
+    if(r.top1_val==null||r.top2_val==null||r.adv_top1_val==null||r.adv_top2_val==null) return false;
+    return r.top1_nome===lado1 && (Number(r.top1_val)||0)>=limD1 &&
+           r.top2_nome===lado2 && (Number(r.top2_val)||0)>=limD2 &&
+           r.adv_top1_nome===advLado1 && (Number(r.adv_top1_val)||0)>=limA1 &&
+           r.adv_top2_nome===advLado2 && (Number(r.adv_top2_val)||0)>=limA2;
+  };
+}
+
+// INIT
+window.onload=()=>{
+  loadSavedKey();
+  updateDBBanner();
+  setMode(1);
+  updateErrorButtons();
+  const db=loadDB();
+  if(db.length>=3){ generateCurrentRank(); }
+};
+</script>
+</body>
+</html>
