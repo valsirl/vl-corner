@@ -32,12 +32,6 @@
   .btn-sm{padding:5px 11px;font-size:0.72rem;}
   .btn-retry{background:linear-gradient(135deg,#1a2a3a,#0a1a2a);color:#7aaaff;border:1px solid #2a3a5a;}
   .btn-retry:hover{background:#1a2a4a;transform:translateY(-1px);}
-  .api-status{padding:9px 13px;border-radius:7px;font-size:0.8rem;margin-top:8px;display:none;}
-  .api-status.ok{background:#0a1a0a;border:1px solid #2a6a2a;color:#6aaa6a;}
-  .api-status.error{background:#1a0a0a;border:1px solid #5a2a2a;color:#e74c3c;}
-  .api-status.loading{background:#1a1a0a;border:1px solid #5a5a2a;color:#f5c518;}
-  .saved-key-info{background:#0a0a12;border:1px solid #2a2a3a;border-radius:7px;padding:9px 13px;font-size:0.78rem;color:#666;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-  .saved-key-info span{flex:1;}
   .db-banner{background:#111118;border:1px solid #222235;border-radius:10px;padding:13px 18px;margin-bottom:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-left:3px solid #f5c518;}
   .db-dot{width:9px;height:9px;border-radius:50%;background:#2a7a2a;box-shadow:0 0 6px #2a7a2a;flex-shrink:0;animation:pulse 2s infinite;}
   @keyframes pulse{0%,100%{box-shadow:0 0 5px #2a7a2a;}50%{box-shadow:0 0 14px #4aaa4a;}}
@@ -171,27 +165,15 @@
   </div>
 </header>
 <div class="container">
-  <div class="card">
-    <div class="card-title">🔑 CONFIGURAÇÃO DA API OPENAI</div>
-    <div id="apiSavedInfo" style="display:none">
-      <div class="saved-key-info">
-        <span>🔒 Chave salva: <span style="color:#f5c518" id="keyPreview"></span></span>
-        <button class="btn btn-secondary btn-sm" onclick="showChangeKey()">✏️ ALTERAR</button>
-        <button class="btn btn-secondary btn-sm" onclick="clearSavedKey()">🗑 REMOVER</button>
-        <button class="btn btn-warn btn-sm" onclick="testAPI()">🔌 TESTAR</button>
-      </div>
-    </div>
-    <div id="apiInputArea">
-      <div class="config-row">
-        <input type="password" id="apiKey" placeholder="Cole sua chave OpenAI aqui (sk-...)" style="flex:1;min-width:200px;">
-        <button class="btn btn-secondary" onclick="toggleKey()">👁</button>
-        <button class="btn btn-warn" onclick="testAPI()">🔌 TESTAR</button>
-        <button class="btn btn-primary" onclick="saveKey()">💾 SALVAR</button>
-      </div>
-      <div style="font-size:0.68rem;color:#444;margin-top:4px;">🔥 Chave salva na nuvem (Firebase) — disponível em qualquer dispositivo.</div>
-    </div>
-    <div class="api-status" id="apiStatus"></div>
+  <!-- API KEY OCULTA -->
+  <div style="display:none;">
+    <input type="hidden" id="apiKey">
+    <div id="apiSavedInfo"></div>
+    <div id="apiInputArea"></div>
+    <span id="keyPreview"></span>
+    <div id="apiStatus"></div>
   </div>
+
   <div class="db-banner" id="dbBanner">
     <div class="db-dot" id="dbDot"></div>
     <div class="db-info">
@@ -441,7 +423,7 @@ function setMode(m){currentMode=m;document.getElementById('modeBtn1').classList.
 function generateCurrentRank(){const db=loadDB();const valid=db.filter(r=>r.top1_val!=null&&r.top2_val!=null);if(valid.length>=3){if(currentMode===1)generateRank1();if(currentMode===2)generateRank2();}}
 
 // ═══════════════════════════════════════════════════
-// API KEY — FIREBASE + LOCALSTORAGE
+// API KEY — OCULTA, CARREGA DO FIREBASE
 // ═══════════════════════════════════════════════════
 async function loadSavedKey(){
   try{
@@ -449,47 +431,15 @@ async function loadSavedKey(){
     const cloudKey=snap.val();
     if(cloudKey){
       document.getElementById('apiKey').value=cloudKey;
-      document.getElementById('apiSavedInfo').style.display='block';
-      document.getElementById('apiInputArea').style.display='none';
-      document.getElementById('keyPreview').textContent=cloudKey.slice(0,8)+'••••'+cloudKey.slice(-4);
       try{localStorage.setItem('vl_openai_key',cloudKey);}catch(e){}
       return;
     }
   }catch(e){console.warn('Firebase key load error:',e);}
   const s=localStorage.getItem('vl_openai_key');
-  if(s){
-    document.getElementById('apiKey').value=s;
-    document.getElementById('apiSavedInfo').style.display='block';
-    document.getElementById('apiInputArea').style.display='none';
-    document.getElementById('keyPreview').textContent=s.slice(0,8)+'••••'+s.slice(-4);
-  }
+  if(s) document.getElementById('apiKey').value=s;
 }
 
-function saveKey(){
-  const k=document.getElementById('apiKey').value.trim();
-  if(!k){showToast('⚠️ Digite a chave.',true);return;}
-  fireDB.ref('config/apiKey').set(k).catch(e=>console.warn('Firebase key save error:',e));
-  try{localStorage.setItem('vl_openai_key',k);}catch(e){}
-  document.getElementById('keyPreview').textContent=k.slice(0,8)+'••••'+k.slice(-4);
-  document.getElementById('apiSavedInfo').style.display='block';
-  document.getElementById('apiInputArea').style.display='none';
-  showToast('✅ Chave salva na nuvem (Firebase)!');
-}
-
-function clearSavedKey(){
-  fireDB.ref('config/apiKey').set(null).catch(e=>console.warn(e));
-  try{localStorage.removeItem('vl_openai_key');}catch(e){}
-  document.getElementById('apiKey').value='';
-  document.getElementById('apiSavedInfo').style.display='none';
-  document.getElementById('apiInputArea').style.display='block';
-  showToast('🗑 Chave removida da nuvem!');
-}
-
-function showChangeKey(){document.getElementById('apiSavedInfo').style.display='none';document.getElementById('apiInputArea').style.display='block';}
 function getKey(){return document.getElementById('apiKey').value.trim();}
-function toggleKey(){const i=document.getElementById('apiKey');i.type=i.type==='password'?'text':'password';}
-async function testAPI(){const k=getKey();if(!k){showStatus('⚠️ Cole sua chave primeiro.','error');return;}showStatus('⏳ Testando...','loading');try{const r=await fetch('https://api.openai.com/v1/models',{headers:{'Authorization':'Bearer '+k}});const j=await r.json();if(r.ok)showStatus('✅ Chave válida!','ok');else showStatus('❌ '+(j.error?.message||'Inválida'),'error');}catch(e){showStatus('❌ Erro: '+e.message,'error');}}
-function showStatus(msg,type){const el=document.getElementById('apiStatus');el.textContent=msg;el.className='api-status '+type;el.style.display='block';}
 
 // ═══════════════════════════════════════════════════
 // UPLOAD + DRAG
@@ -593,8 +543,8 @@ Retorne SOMENTE JSON válido, sem texto extra:
 // ═══════════════════════════════════════════════════
 // ANÁLISE — POSITIVOS E NEGATIVOS
 // ═══════════════════════════════════════════════════
-async function startAnalysis(){const k=getKey();if(!k){showToast('⚠️ Configure a chave!',true);return;}document.getElementById('logBox').style.display='block';await runAnalysis(imageQueue.filter(i=>i.status==='pending'),k,'positivo');}
-async function retryErrors(){const k=getKey();if(!k){showToast('⚠️ Configure a chave!',true);return;}const errs=imageQueue.filter(i=>i.status==='error');if(!errs.length){showToast('Nenhum erro.');return;}errs.forEach(i=>{i.status='pending';i.errorMsg='';});renderQueue();addLog(`🔄 Retentando ${errs.length} erro(s)...`,'warn');await runAnalysis(errs,k,'positivo');}
+async function startAnalysis(){const k=getKey();if(!k){showToast('⚠️ Chave API não encontrada!',true);return;}document.getElementById('logBox').style.display='block';await runAnalysis(imageQueue.filter(i=>i.status==='pending'),k,'positivo');}
+async function retryErrors(){const k=getKey();if(!k){showToast('⚠️ Chave API não encontrada!',true);return;}const errs=imageQueue.filter(i=>i.status==='error');if(!errs.length){showToast('Nenhum erro.');return;}errs.forEach(i=>{i.status='pending';i.errorMsg='';});renderQueue();addLog(`🔄 Retentando ${errs.length} erro(s)...`,'warn');await runAnalysis(errs,k,'positivo');}
 
 async function runAnalysis(queue,apiKey,tipo){
   if(!queue.length){showToast('Nenhuma pendente.');return;}document.getElementById('btnAnalyze').disabled=true;let done=0;
@@ -604,8 +554,8 @@ async function runAnalysis(queue,apiKey,tipo){
   document.getElementById('btnAnalyze').disabled=false;const erros=imageQueue.filter(i=>i.status==='error').length;showToast(erros>0?`⚠️ ${erros} erro(s) — use RETENTAR`:`✅ Concluído! ${loadDB().length} no banco.`,erros>0);
 }
 
-async function startAnalysisNeg(){const k=getKey();if(!k){showToast('⚠️ Configure a chave!',true);return;}document.getElementById('logBox').style.display='block';await runAnalysisNeg(imageQueueNeg.filter(i=>i.status==='pending'),k);}
-async function retryErrorsNeg(){const k=getKey();if(!k){showToast('⚠️ Configure a chave!',true);return;}const errs=imageQueueNeg.filter(i=>i.status==='error');if(!errs.length){showToast('Nenhum erro.');return;}errs.forEach(i=>{i.status='pending';i.errorMsg='';});renderQueueNeg();addLog(`🔄 [NEG] Retentando ${errs.length} erro(s)...`,'warn');await runAnalysisNeg(errs,k);}
+async function startAnalysisNeg(){const k=getKey();if(!k){showToast('⚠️ Chave API não encontrada!',true);return;}document.getElementById('logBox').style.display='block';await runAnalysisNeg(imageQueueNeg.filter(i=>i.status==='pending'),k);}
+async function retryErrorsNeg(){const k=getKey();if(!k){showToast('⚠️ Chave API não encontrada!',true);return;}const errs=imageQueueNeg.filter(i=>i.status==='error');if(!errs.length){showToast('Nenhum erro.');return;}errs.forEach(i=>{i.status='pending';i.errorMsg='';});renderQueueNeg();addLog(`🔄 [NEG] Retentando ${errs.length} erro(s)...`,'warn');await runAnalysisNeg(errs,k);}
 
 async function runAnalysisNeg(queue,apiKey){
   if(!queue.length){showToast('Nenhuma pendente.');return;}document.getElementById('btnAnalyzeNeg').disabled=true;let done=0;
@@ -630,7 +580,7 @@ function sortRankList(lista,sortBy){if(sortBy==='ocorrencias')lista.sort((a,b)=>
 function confBadge(total,assertividade){if(total>=5&&assertividade>80)return '<span class="conf-badge conf-high">🟢 ALTA ('+total+'x · '+assertividade+'%)</span>';if(total>=3&&assertividade>=60&&assertividade<=80)return '<span class="conf-badge conf-med">🟡 MÉDIA ('+total+'x · '+assertividade+'%)</span>';return '<span class="conf-badge conf-low">🔴 BAIXA ('+total+'x · '+assertividade+'%)</span>';}
 function rankSummaryHTML(t,p,n,f){return `<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px;"><div style="background:#0d0d14;border:1px solid #222235;border-radius:7px;padding:8px 14px;text-align:center;"><div style="font-family:'Oswald',sans-serif;font-size:1.2rem;color:#f5c518;">${t}</div><div style="font-size:0.65rem;color:#555;text-transform:uppercase;">Total</div></div><div style="background:#0d0d14;border:1px solid #222235;border-radius:7px;padding:8px 14px;text-align:center;"><div style="font-family:'Oswald',sans-serif;font-size:1.2rem;color:#6aaa6a;">${p}</div><div style="font-size:0.65rem;color:#555;text-transform:uppercase;">✅ Positivas</div></div><div style="background:#0d0d14;border:1px solid #222235;border-radius:7px;padding:8px 14px;text-align:center;"><div style="font-family:'Oswald',sans-serif;font-size:1.2rem;color:#ff7a7a;">${n}</div><div style="font-size:0.65rem;color:#555;text-transform:uppercase;">❌ Negativas</div></div><div style="background:#0d0d14;border:1px solid #222235;border-radius:7px;padding:8px 14px;text-align:center;"><div style="font-family:'Oswald',sans-serif;font-size:1.2rem;color:#aaa;">${f}</div><div style="font-size:0.65rem;color:#555;text-transform:uppercase;">Faixas</div></div></div>`;}
 
-// ���══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 // RANKING MODO 1
 // ═══════════════════════════════════════════════════
 function generateRank1(){const db=loadDB();const valid=db.filter(r=>r.presenca_ataque_dominante!=null&&r.top1_val!=null&&r.top2_val!=null);const cont=document.getElementById('rank1Content');const sec=document.getElementById('rank1Section');if(valid.length<3){sec.style.display=currentMode===1?'block':'none';cont.innerHTML='<div class="empty-state">Analise pelo menos 3 partidas.</div>';return;}sec.style.display=currentMode===1?'block':'none';const sA=parseInt(document.getElementById('rank1FaixaAtaque').value,10);const sC1=parseInt(document.getElementById('rank1FaixaCor1').value,10);const sC2=parseInt(document.getElementById('rank1FaixaCor2').value,10);const sortBy=document.getElementById('rank1Sort').value;function fA(v){return makeFaixa(Number(v)||0,sA).label;}function fC1(v){return makeFaixa(Number(v)||0,sC1).label;}function fC2(v){return makeFaixa(Number(v)||0,sC2).label;}function key(r){return[fA(r.presenca_ataque_dominante),r.top1_nome,fC1(r.top1_val),r.top2_nome,fC2(r.top2_val)].join('|');}const buckets=new Map();valid.forEach(r=>{const k=key(r);if(!buckets.has(k))buckets.set(k,{k,faixaAtaque:fA(r.presenca_ataque_dominante),lado1:r.top1_nome,faixaCor1:fC1(r.top1_val),lado2:r.top2_nome,faixaCor2:fC2(r.top2_val),total:0,positivos:0,negativos:0});const b=buckets.get(k);b.total++;if(r.resultado==='negativo')b.negativos++;else b.positivos++;});let lista=[...buckets.values()].map(b=>({...b,assertividade:b.total>0?Math.round(b.positivos/b.total*100):0,hit:b.positivos}));lista=sortRankList(lista,sortBy);const tG=valid.length,pG=valid.filter(r=>r.resultado!=='negativo').length,nG=valid.filter(r=>r.resultado==='negativo').length;if(!lista.length){cont.innerHTML='<div class="empty-state">Nenhuma faixa.</div>';return;}let h=rankSummaryHTML(tG,pG,nG,lista.length);h+=`<div style="font-size:0.72rem;color:#555;margin-bottom:14px;padding:8px 12px;background:#0a0a12;border-radius:6px;border-left:3px solid #f5c518;">Modo 1 · Ataque ${sA}pts | COR.1 ${sC1}pts | COR.2 ${sC2}pts · ${sortBy}</div><div class="table-wrap rank-table-scroll"><table class="rank-table"><thead><tr><th>#</th><th>ATAQUE</th><th>L1</th><th>COR.1</th><th>L2</th><th>COR.2</th><th>OCORR.</th><th>HIT</th><th>ASSERT.</th><th>CONF.</th></tr></thead><tbody>`;lista.forEach((b,i)=>{const m=i<3?['🥇','🥈','🥉'][i]:'';const ac=b.assertividade>=70?'#6aaa6a':b.assertividade>=40?'#f5c518':'#ff7a7a';h+=`<tr class="rank-row-clickable" onclick="showRankDetail(makeRank1Filter('${b.faixaAtaque}','${b.lado1}','${b.faixaCor1}','${b.lado2}','${b.faixaCor2}',${sA},${sC1},${sC2}),'${b.lado1} ${b.faixaCor1} + ${b.lado2} ${b.faixaCor2} · Ataque ${b.faixaAtaque}')"><td><span class="rank-pos">${m}${i+1}</span></td><td><span class="rank-faixa">${b.faixaAtaque}</span></td><td>${ladoBadge(b.lado1)}</td><td><span class="rank-faixa">${b.faixaCor1}</span></td><td>${ladoBadge(b.lado2)}</td><td><span class="rank-faixa">${b.faixaCor2}</span></td><td style="text-align:center;"><strong style="font-family:'Oswald',sans-serif;font-size:1rem;color:#f5c518;">${b.total}x</strong></td><td>${hitBarHTML(b.positivos,b.negativos,b.total)}</td><td style="text-align:center;"><strong style="font-family:'Oswald',sans-serif;font-size:1rem;color:${ac}">${b.assertividade}%</strong></td><td style="text-align:center;">${confBadge(b.total,b.assertividade)}</td></tr>`;});h+=`</tbody></table></div>`;cont.innerHTML=h;}
