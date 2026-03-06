@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VL Corner — Analisador de Mapa de Calor v3</title>
+<title>VL Corner — Analisador de Mapa de Calor @valsirl</title>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 <style>
@@ -188,7 +188,7 @@
         <button class="btn btn-warn" onclick="testAPI()">🔌 TESTAR</button>
         <button class="btn btn-primary" onclick="saveKey()">💾 SALVAR</button>
       </div>
-      <div style="font-size:0.68rem;color:#444;margin-top:4px;">💾 Chave salva no navegador (localStorage).</div>
+      <div style="font-size:0.68rem;color:#444;margin-top:4px;">🔥 Chave salva na nuvem (Firebase) — disponível em qualquer dispositivo.</div>
     </div>
     <div class="api-status" id="apiStatus"></div>
   </div>
@@ -393,7 +393,6 @@ function updateFirebaseStatus(online){
   else{el.textContent='🟡 OFFLINE (LOCAL)';el.className='firebase-status firebase-offline';}
 }
 
-// Sync em tempo real
 fireDB.ref('partidas').on('value',snapshot=>{
   const val=snapshot.val();
   cachedDB=val?(Array.isArray(val)?val:Object.values(val)):[];
@@ -402,7 +401,6 @@ fireDB.ref('partidas').on('value',snapshot=>{
   updateDBBanner();
 });
 
-// Detectar conexão
 fireDB.ref('.info/connected').on('value',snap=>{
   firebaseConnected=!!snap.val();
   updateFirebaseStatus(firebaseConnected);
@@ -443,12 +441,51 @@ function setMode(m){currentMode=m;document.getElementById('modeBtn1').classList.
 function generateCurrentRank(){const db=loadDB();const valid=db.filter(r=>r.top1_val!=null&&r.top2_val!=null);if(valid.length>=3){if(currentMode===1)generateRank1();if(currentMode===2)generateRank2();}}
 
 // ═══════════════════════════════════════════════════
-// API KEY
-// ══════════════════════���════════════════════════════
-function loadSavedKey(){const s=localStorage.getItem('vl_openai_key');if(s){document.getElementById('apiKey').value=s;document.getElementById('apiSavedInfo').style.display='block';document.getElementById('apiInputArea').style.display='none';document.getElementById('keyPreview').textContent=s.slice(0,8)+'••••'+s.slice(-4);}}
-function saveKey(){const k=document.getElementById('apiKey').value.trim();if(!k){showToast('⚠️ Digite a chave.',true);return;}localStorage.setItem('vl_openai_key',k);document.getElementById('keyPreview').textContent=k.slice(0,8)+'••••'+k.slice(-4);document.getElementById('apiSavedInfo').style.display='block';document.getElementById('apiInputArea').style.display='none';showToast('✅ Chave salva!');}
+// API KEY — FIREBASE + LOCALSTORAGE
+// ═══════════════════════════════════════════════════
+async function loadSavedKey(){
+  try{
+    const snap=await fireDB.ref('config/apiKey').once('value');
+    const cloudKey=snap.val();
+    if(cloudKey){
+      document.getElementById('apiKey').value=cloudKey;
+      document.getElementById('apiSavedInfo').style.display='block';
+      document.getElementById('apiInputArea').style.display='none';
+      document.getElementById('keyPreview').textContent=cloudKey.slice(0,8)+'••••'+cloudKey.slice(-4);
+      try{localStorage.setItem('vl_openai_key',cloudKey);}catch(e){}
+      return;
+    }
+  }catch(e){console.warn('Firebase key load error:',e);}
+  const s=localStorage.getItem('vl_openai_key');
+  if(s){
+    document.getElementById('apiKey').value=s;
+    document.getElementById('apiSavedInfo').style.display='block';
+    document.getElementById('apiInputArea').style.display='none';
+    document.getElementById('keyPreview').textContent=s.slice(0,8)+'••••'+s.slice(-4);
+  }
+}
+
+function saveKey(){
+  const k=document.getElementById('apiKey').value.trim();
+  if(!k){showToast('⚠️ Digite a chave.',true);return;}
+  fireDB.ref('config/apiKey').set(k).catch(e=>console.warn('Firebase key save error:',e));
+  try{localStorage.setItem('vl_openai_key',k);}catch(e){}
+  document.getElementById('keyPreview').textContent=k.slice(0,8)+'••••'+k.slice(-4);
+  document.getElementById('apiSavedInfo').style.display='block';
+  document.getElementById('apiInputArea').style.display='none';
+  showToast('✅ Chave salva na nuvem (Firebase)!');
+}
+
+function clearSavedKey(){
+  fireDB.ref('config/apiKey').set(null).catch(e=>console.warn(e));
+  try{localStorage.removeItem('vl_openai_key');}catch(e){}
+  document.getElementById('apiKey').value='';
+  document.getElementById('apiSavedInfo').style.display='none';
+  document.getElementById('apiInputArea').style.display='block';
+  showToast('🗑 Chave removida da nuvem!');
+}
+
 function showChangeKey(){document.getElementById('apiSavedInfo').style.display='none';document.getElementById('apiInputArea').style.display='block';}
-function clearSavedKey(){localStorage.removeItem('vl_openai_key');document.getElementById('apiKey').value='';document.getElementById('apiSavedInfo').style.display='none';document.getElementById('apiInputArea').style.display='block';showToast('🗑 Removida.');}
 function getKey(){return document.getElementById('apiKey').value.trim();}
 function toggleKey(){const i=document.getElementById('apiKey');i.type=i.type==='password'?'text':'password';}
 async function testAPI(){const k=getKey();if(!k){showStatus('⚠️ Cole sua chave primeiro.','error');return;}showStatus('⏳ Testando...','loading');try{const r=await fetch('https://api.openai.com/v1/models',{headers:{'Authorization':'Bearer '+k}});const j=await r.json();if(r.ok)showStatus('✅ Chave válida!','ok');else showStatus('❌ '+(j.error?.message||'Inválida'),'error');}catch(e){showStatus('❌ Erro: '+e.message,'error');}}
@@ -593,7 +630,7 @@ function sortRankList(lista,sortBy){if(sortBy==='ocorrencias')lista.sort((a,b)=>
 function confBadge(total,assertividade){if(total>=5&&assertividade>80)return '<span class="conf-badge conf-high">🟢 ALTA ('+total+'x · '+assertividade+'%)</span>';if(total>=3&&assertividade>=60&&assertividade<=80)return '<span class="conf-badge conf-med">🟡 MÉDIA ('+total+'x · '+assertividade+'%)</span>';return '<span class="conf-badge conf-low">🔴 BAIXA ('+total+'x · '+assertividade+'%)</span>';}
 function rankSummaryHTML(t,p,n,f){return `<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px;"><div style="background:#0d0d14;border:1px solid #222235;border-radius:7px;padding:8px 14px;text-align:center;"><div style="font-family:'Oswald',sans-serif;font-size:1.2rem;color:#f5c518;">${t}</div><div style="font-size:0.65rem;color:#555;text-transform:uppercase;">Total</div></div><div style="background:#0d0d14;border:1px solid #222235;border-radius:7px;padding:8px 14px;text-align:center;"><div style="font-family:'Oswald',sans-serif;font-size:1.2rem;color:#6aaa6a;">${p}</div><div style="font-size:0.65rem;color:#555;text-transform:uppercase;">✅ Positivas</div></div><div style="background:#0d0d14;border:1px solid #222235;border-radius:7px;padding:8px 14px;text-align:center;"><div style="font-family:'Oswald',sans-serif;font-size:1.2rem;color:#ff7a7a;">${n}</div><div style="font-size:0.65rem;color:#555;text-transform:uppercase;">❌ Negativas</div></div><div style="background:#0d0d14;border:1px solid #222235;border-radius:7px;padding:8px 14px;text-align:center;"><div style="font-family:'Oswald',sans-serif;font-size:1.2rem;color:#aaa;">${f}</div><div style="font-size:0.65rem;color:#555;text-transform:uppercase;">Faixas</div></div></div>`;}
 
-// ═══════════════════════════════════════════════════
+// ���══════════════════════════════════════════════════
 // RANKING MODO 1
 // ═══════════════════════════════════════════════════
 function generateRank1(){const db=loadDB();const valid=db.filter(r=>r.presenca_ataque_dominante!=null&&r.top1_val!=null&&r.top2_val!=null);const cont=document.getElementById('rank1Content');const sec=document.getElementById('rank1Section');if(valid.length<3){sec.style.display=currentMode===1?'block':'none';cont.innerHTML='<div class="empty-state">Analise pelo menos 3 partidas.</div>';return;}sec.style.display=currentMode===1?'block':'none';const sA=parseInt(document.getElementById('rank1FaixaAtaque').value,10);const sC1=parseInt(document.getElementById('rank1FaixaCor1').value,10);const sC2=parseInt(document.getElementById('rank1FaixaCor2').value,10);const sortBy=document.getElementById('rank1Sort').value;function fA(v){return makeFaixa(Number(v)||0,sA).label;}function fC1(v){return makeFaixa(Number(v)||0,sC1).label;}function fC2(v){return makeFaixa(Number(v)||0,sC2).label;}function key(r){return[fA(r.presenca_ataque_dominante),r.top1_nome,fC1(r.top1_val),r.top2_nome,fC2(r.top2_val)].join('|');}const buckets=new Map();valid.forEach(r=>{const k=key(r);if(!buckets.has(k))buckets.set(k,{k,faixaAtaque:fA(r.presenca_ataque_dominante),lado1:r.top1_nome,faixaCor1:fC1(r.top1_val),lado2:r.top2_nome,faixaCor2:fC2(r.top2_val),total:0,positivos:0,negativos:0});const b=buckets.get(k);b.total++;if(r.resultado==='negativo')b.negativos++;else b.positivos++;});let lista=[...buckets.values()].map(b=>({...b,assertividade:b.total>0?Math.round(b.positivos/b.total*100):0,hit:b.positivos}));lista=sortRankList(lista,sortBy);const tG=valid.length,pG=valid.filter(r=>r.resultado!=='negativo').length,nG=valid.filter(r=>r.resultado==='negativo').length;if(!lista.length){cont.innerHTML='<div class="empty-state">Nenhuma faixa.</div>';return;}let h=rankSummaryHTML(tG,pG,nG,lista.length);h+=`<div style="font-size:0.72rem;color:#555;margin-bottom:14px;padding:8px 12px;background:#0a0a12;border-radius:6px;border-left:3px solid #f5c518;">Modo 1 · Ataque ${sA}pts | COR.1 ${sC1}pts | COR.2 ${sC2}pts · ${sortBy}</div><div class="table-wrap rank-table-scroll"><table class="rank-table"><thead><tr><th>#</th><th>ATAQUE</th><th>L1</th><th>COR.1</th><th>L2</th><th>COR.2</th><th>OCORR.</th><th>HIT</th><th>ASSERT.</th><th>CONF.</th></tr></thead><tbody>`;lista.forEach((b,i)=>{const m=i<3?['🥇','🥈','🥉'][i]:'';const ac=b.assertividade>=70?'#6aaa6a':b.assertividade>=40?'#f5c518':'#ff7a7a';h+=`<tr class="rank-row-clickable" onclick="showRankDetail(makeRank1Filter('${b.faixaAtaque}','${b.lado1}','${b.faixaCor1}','${b.lado2}','${b.faixaCor2}',${sA},${sC1},${sC2}),'${b.lado1} ${b.faixaCor1} + ${b.lado2} ${b.faixaCor2} · Ataque ${b.faixaAtaque}')"><td><span class="rank-pos">${m}${i+1}</span></td><td><span class="rank-faixa">${b.faixaAtaque}</span></td><td>${ladoBadge(b.lado1)}</td><td><span class="rank-faixa">${b.faixaCor1}</span></td><td>${ladoBadge(b.lado2)}</td><td><span class="rank-faixa">${b.faixaCor2}</span></td><td style="text-align:center;"><strong style="font-family:'Oswald',sans-serif;font-size:1rem;color:#f5c518;">${b.total}x</strong></td><td>${hitBarHTML(b.positivos,b.negativos,b.total)}</td><td style="text-align:center;"><strong style="font-family:'Oswald',sans-serif;font-size:1rem;color:${ac}">${b.assertividade}%</strong></td><td style="text-align:center;">${confBadge(b.total,b.assertividade)}</td></tr>`;});h+=`</tbody></table></div>`;cont.innerHTML=h;}
@@ -663,7 +700,7 @@ function updateBackupInfo(){const el=document.getElementById('backupInfo');if(!e
 // INIT
 // ═══════════════════════════════════════════════════
 window.onload=async()=>{
-  loadSavedKey();
+  await loadSavedKey();
   await loadDBFromCloud();
   updateDBBanner();
   updateBackupInfo();
